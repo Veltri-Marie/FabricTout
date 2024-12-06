@@ -1,11 +1,8 @@
 package be.fabrictout.connection;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import javax.sql.DataSource;
+import java.io.*;
+import java.sql.*;
+import java.util.*;
 
 public class FabricToutConnection {
 
@@ -13,20 +10,41 @@ public class FabricToutConnection {
 
     private FabricToutConnection() {
         try {
-            Context initContext = new InitialContext();
-            Context envContext = (Context) initContext.lookup("java:/comp/env");
-            DataSource ds = (DataSource) envContext.lookup("jdbc/FabricToutDB");
+            Properties properties = new Properties();
+            System.out.println("Tentative de connexion à la base de données");
+            System.out.println("Répertoire de travail actuel: " + System.getProperty("user.dir"));
 
-            instance = ds.getConnection();
-            System.out.println("Connexion réussie avec JNDI !");
-        } catch (NamingException ex) {
-            throw new RuntimeException("Erreur JNDI : " + ex.getMessage(), ex);
+            InputStream inputStream = getClass().getResourceAsStream("/config.properties");
+            if (inputStream == null) {
+                System.out.println("Fichier config.properties non trouvé");
+                return;
+            }
+            properties.load(inputStream);
+
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+
+            System.out.println("Tentative de connexion à la base de données");
+            System.out.println("URL: " + properties.getProperty("db.url"));
+            System.out.println("User: " + properties.getProperty("db.user"));
+            System.out.println("Password: " + properties.getProperty("db.password"));
+            String url = properties.getProperty("db.url");
+            String user = properties.getProperty("db.user");
+            String password = properties.getProperty("db.password");
+            System.setProperty("oracle.jdbc.Trace", "true");
+            instance = DriverManager.getConnection(url, user, password);
+            System.out.println("Connexion réussie !");
+        } catch (ClassNotFoundException ex) {
+            System.out.println("Classe de driver introuvable : " + ex.getMessage());
+            System.exit(0);
         } catch (SQLException ex) {
-            throw new RuntimeException("Erreur JDBC : " + ex.getMessage(), ex);
+            System.out.println("Erreur JDBC : " + ex.getMessage());
+        } catch (IOException ex) {
+            System.out.println("Erreur lors du chargement du fichier de configuration : " + ex.getMessage());
         }
-
+        
         if (instance == null) {
-            throw new RuntimeException("La base de données est inaccessible, fermeture du programme.");
+            System.out.println("La base de données est inaccessible, fermeture du programme.");
+            System.exit(0);
         }
     }
 

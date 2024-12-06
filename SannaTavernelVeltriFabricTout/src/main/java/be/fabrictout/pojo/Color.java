@@ -1,5 +1,9 @@
 package be.fabrictout.pojo;
 
-public class Color {
-
+public enum Color {
+    GREEN,
+    ORANGE,
+    RED,
+    BLACK
 }
+
