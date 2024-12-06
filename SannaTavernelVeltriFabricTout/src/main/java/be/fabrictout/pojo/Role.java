@@ -1,5 +1,8 @@
 package be.fabrictout.pojo;
 
-public class Role {
-
+public enum Role {
+    ADMIN,
+    MANAGER,
+    WORKER
 }
+
