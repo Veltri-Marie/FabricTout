@@ -65,6 +65,22 @@ public class Employee extends Person {
         return employeeDAO.getNextIdDAO(); 
     }
     
+	public boolean delete(EmployeeDAO employeeDAO) {
+		return employeeDAO.deleteDAO(this);
+	}
+	
+	public boolean update(EmployeeDAO employeeDAO) {
+		return employeeDAO.updateDAO(this);
+	}
+	
+	public static Employee find(int id, EmployeeDAO employeeDAO) {
+		return employeeDAO.findDAO(id);
+	}
+	
+	public static List<Employee> findAll(EmployeeDAO employeeDAO) {
+		return employeeDAO.findAllDAO();
+	}
+    
 	public void addMaintenance(Maintenance maintenance) {
 		maintenances.add(maintenance);
 	}

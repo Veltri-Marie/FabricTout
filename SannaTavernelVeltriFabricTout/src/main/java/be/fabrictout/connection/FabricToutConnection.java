@@ -21,12 +21,8 @@ public class FabricToutConnection {
             }
             properties.load(inputStream);
 
-            Class.forName("oracle.jdbc.driver.OracleDriver");
+            Class.forName("oracle.jdbc.OracleDriver");
 
-            System.out.println("Tentative de connexion à la base de données");
-            System.out.println("URL: " + properties.getProperty("db.url"));
-            System.out.println("User: " + properties.getProperty("db.user"));
-            System.out.println("Password: " + properties.getProperty("db.password"));
             String url = properties.getProperty("db.url");
             String user = properties.getProperty("db.user");
             String password = properties.getProperty("db.password");
