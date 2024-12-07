@@ -17,13 +17,13 @@
   </welcome-file-list>
   
   <servlet>
-    <servlet-name>AdminServlet</servlet-name>
-    <servlet-class>be.fabrictout.servlets.AdminServlet</servlet-class>
-</servlet>
+    <servlet-name>Admin</servlet-name>
+    <servlet-class>be.fabrictout.servlets.Admin</servlet-class>
+  </servlet>
 
-<servlet-mapping>
-    <servlet-name>AdminServlet</servlet-name>
-    <url-pattern>/AdminServlet</url-pattern>
-</servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>Admin</servlet-name>
+    <url-pattern>/Admin</url-pattern>
+  </servlet-mapping>
 
 </web-app>
