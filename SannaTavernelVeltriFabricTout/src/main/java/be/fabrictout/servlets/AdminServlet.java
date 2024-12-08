@@ -16,7 +16,7 @@ import be.fabrictout.dao.EmployeeDAO;
 import be.fabrictout.pojo.Employee;
 import be.fabrictout.pojo.Role;
 
-public class Admin extends HttpServlet {
+public class AdminServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     private Connection conn;
@@ -29,7 +29,7 @@ public class Admin extends HttpServlet {
         employeeDAO = new EmployeeDAO(conn);
     }
 
-    public Admin() {
+    public AdminServlet() {
         super();
     }
 
@@ -47,7 +47,6 @@ public class Admin extends HttpServlet {
         try {
             List<Employee> employees = Employee.findAll(employeeDAO); 
             request.setAttribute("employees", employees); 
-
 
             RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
             dispatcher.forward(request, response);
@@ -81,13 +80,15 @@ public class Admin extends HttpServlet {
         }
 
         try {
+            String registrationCode = firstName.substring(0, 1).toUpperCase() + lastName.toUpperCase();
             LocalDate birthDateParsed = LocalDate.parse(birthDate);
+            int employeeId = Employee.getNextId(employeeDAO);
 
-            Employee employee = new Employee(firstName, lastName, birthDateParsed, phoneNumber, 0, password, Role.valueOf(role.toUpperCase()));
-            boolean created = employee.create(employeeDAO);  
+            Employee employee = new Employee(firstName, lastName, birthDateParsed, phoneNumber, employeeId, registrationCode, password, Role.valueOf(role.toUpperCase()));
+            boolean created = employee.create(employeeDAO); 
 
             if (created) {
-                loadAllEmployees(request, response);
+                loadAllEmployees(request, response); 
             } else {
                 request.setAttribute("error", "Erreur lors de la création de l'employé.");
                 RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
@@ -100,4 +101,5 @@ public class Admin extends HttpServlet {
             dispatcher.forward(request, response);
         }
     }
+
 }

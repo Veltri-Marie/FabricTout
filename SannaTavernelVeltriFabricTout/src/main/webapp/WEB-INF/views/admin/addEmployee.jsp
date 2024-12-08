@@ -4,7 +4,7 @@
 
 <html>
 <head>
-    <title>Gestion des employés</title>
+    <title>Employee Management</title>
 
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/css/bootstrap.css" />
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/css/style.css" />
@@ -14,40 +14,40 @@
     <link href="https://fonts.googleapis.com/css?family=Poppins:400,600,700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Ajouter un employé</h1>
+    <h1>Add an Employee</h1>
     <form action="Admin" method="post">
-        <label for="firstName">Prénom:</label>
+        <label for="firstName">First Name:</label>
         <input type="text" id="firstName" name="firstName" required/><br>
         
-        <label for="lastName">Nom:</label>
+        <label for="lastName">Last Name:</label>
         <input type="text" id="lastName" name="lastName" required/><br>
         
-        <label for="birthDate">Date de naissance:</label>
+        <label for="birthDate">Birth Date:</label>
         <input type="date" id="birthDate" name="birthDate" required/><br>
         
-        <label for="phoneNumber">Numéro de téléphone:</label>
+        <label for="phoneNumber">Phone Number:</label>
         <input type="text" id="phoneNumber" name="phoneNumber" required/><br>
         
-        <label for="password">Mot de passe:</label>
+        <label for="password">Password:</label>
         <input type="password" id="password" name="password" required/><br>
 
-        <label for="role">Rôle:</label>
+        <label for="role">Role:</label>
         <select name="role">
-            <option value="ADMIN">Administrateur</option>
+            <option value="ADMIN">Administrator</option>
             <option value="MANAGER">Manager</option>
-            <option value="WORKER">Ouvrier</option>
+            <option value="WORKER">Worker</option>
         </select><br>
         
-        <button type="submit">Ajouter</button>
+        <button type="submit">Add</button>
     </form>
 
-    <h1>Liste des employés</h1>
+    <h1>Employee List</h1>
     <table border="1">
         <tr>
             <th>ID</th>
-            <th>Nom</th>
-            <th>Prénom</th>
-            <th>Rôle</th>
+            <th>Last Name</th>
+            <th>First Name</th>
+            <th>Role</th>
         </tr>
         <%
             List<Employee> employees = (List<Employee>) request.getAttribute("employees");

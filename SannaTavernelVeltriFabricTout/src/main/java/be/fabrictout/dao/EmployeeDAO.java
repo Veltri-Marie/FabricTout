@@ -29,32 +29,51 @@ public class EmployeeDAO extends DAO<Employee> {
 
     @Override
     public boolean createDAO(Employee employee) {
-        String procedureCall = "{call add_employee(?, ?, ?, ?, ?, ?)}";
+        String procedureCall = "{call add_employee(?, ?, ?, ?, ?, ?, ?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-
-            stmt.setString(1, employee.getFirstName());
-            stmt.setString(2, employee.getLastName());
-            stmt.setDate(3, Date.valueOf(employee.getBirthdate()));
-            stmt.setString(4, employee.getPhoneNumber());
-            stmt.setString(5, employee.getPassword());
-            stmt.setString(6, employee.getRole().toString());
+        	
+        	stmt.setString(1, employee.getRegistrationCode());
+            stmt.setString(2, employee.getFirstName());
+            stmt.setString(3, employee.getLastName());
+            stmt.setDate(4, Date.valueOf(employee.getBirthdate()));
+            stmt.setString(5, employee.getPhoneNumber());
+            stmt.setString(6, employee.getPassword());
+            stmt.setString(7, employee.getRole().toString());
 
             stmt.execute();
 
-            return true; // Retourne vrai si l'exécution réussit
+            return true;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
     }
+    
+    public int authenticateDAO(String registrationCode, String password) {
+        String procedureCall = "{call authenticate_employee(?, ?, ?)}";
+        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
+            stmt.setString(1, registrationCode);
+            stmt.setString(2, password);
 
+            stmt.registerOutParameter(3, Types.INTEGER);
+
+            stmt.execute();
+
+            return stmt.getInt(3);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+   
     @Override
     public boolean deleteDAO(Employee employee) {
         String procedureCall = "{call delete_employee(?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
             stmt.setInt(1, employee.getIdEmployee());
             stmt.execute();
-            return true; // Si la suppression réussit
+            return true; 
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -71,7 +90,7 @@ public class EmployeeDAO extends DAO<Employee> {
             stmt.setString(4, employee.getPhoneNumber());
 
             stmt.execute();
-            return true; // Si la mise à jour réussit
+            return true; 
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -94,6 +113,7 @@ public class EmployeeDAO extends DAO<Employee> {
                         rs.getDate("birthDate").toLocalDate(),
                         rs.getString("phoneNumber"),
                         rs.getInt("id_employee"),
+                        rs.getString("registrationCode"),
                         rs.getString("password"),
                         Role.valueOf(rs.getString("role"))
                     );
@@ -102,7 +122,7 @@ public class EmployeeDAO extends DAO<Employee> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null; // Retourne null si l'employé n'est pas trouvé
+        return null; 
     }
 
     @Override
@@ -121,6 +141,7 @@ public class EmployeeDAO extends DAO<Employee> {
                         rs.getDate("birthDate").toLocalDate(),
                         rs.getString("phoneNumber"),
                         rs.getInt("id_employee"),
+                        rs.getString("registrationCode"),
                         rs.getString("password"),
                         Role.valueOf(rs.getString("role"))
                     ));
@@ -129,6 +150,6 @@ public class EmployeeDAO extends DAO<Employee> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return employees; // Retourne la liste des employés
+        return employees;
     }
 }
