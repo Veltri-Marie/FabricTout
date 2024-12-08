@@ -83,12 +83,16 @@ public class EmployeeDAO extends DAO<Employee> {
 
     @Override
     public boolean updateDAO(Employee employee) {
-        String procedureCall = "{call update_employee(?, ?, ?, ?)}";
+        String procedureCall = "{call update_employee(?, ?, ?, ?, ?, ?, ?, ?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.setInt(1, employee.getIdEmployee());
-            stmt.setString(2, employee.getPassword());
-            stmt.setString(3, employee.getRole().toString());
-            stmt.setString(4, employee.getPhoneNumber());
+        	stmt.setInt(1, employee.getIdEmployee());
+        	stmt.setString(2, employee.getRegistrationCode());
+            stmt.setString(3, employee.getFirstName());
+            stmt.setString(4, employee.getLastName());
+            stmt.setDate(5, Date.valueOf(employee.getBirthdate()));
+            stmt.setString(6, employee.getPhoneNumber());
+            stmt.setString(7, employee.getPassword());
+            stmt.setString(8, employee.getRole().toString());
 
             stmt.execute();
             return true; 
