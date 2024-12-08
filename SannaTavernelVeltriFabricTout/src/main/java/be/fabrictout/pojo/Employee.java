@@ -9,17 +9,20 @@ import be.fabrictout.dao.EmployeeDAO;
 public class Employee extends Person {
 	// ATTRIBUTES
     private int idEmployee;
+    private String registrationCode;
     private String password;
     private Role role;
     private List<Maintenance> maintenances;
 
+    
     // CONSTRUCTORS
     public Employee() {}
     
     public Employee(String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
-            int idEmployee, String password, Role role) {
+            int idEmployee, String registrationCode, String password, Role role) {
 		super(firstName, lastName, birthDate, phoneNumber);
 		this.idEmployee = idEmployee;
+		this.registrationCode = registrationCode;
 		this.password = password;
 		this.role = role;
     }
@@ -30,6 +33,14 @@ public class Employee extends Person {
     
 	public void setIdEmployee(int idEmployee) {
 		this.idEmployee = idEmployee;
+	}
+	
+	public String getRegistrationCode() {
+		return registrationCode;
+	}
+	
+	public void setRegistrationCode(String registrationCode) {
+		this.registrationCode = registrationCode;
 	}
 
     public String getPassword() {
@@ -65,6 +76,10 @@ public class Employee extends Person {
         return employeeDAO.getNextIdDAO(); 
     }
     
+	public static int authenticate(EmployeeDAO employeeDAO, String registrationCode, String password) {
+		return employeeDAO.authenticateDAO(registrationCode, password);
+	}
+    
 	public boolean delete(EmployeeDAO employeeDAO) {
 		return employeeDAO.deleteDAO(this);
 	}
@@ -73,7 +88,7 @@ public class Employee extends Person {
 		return employeeDAO.updateDAO(this);
 	}
 	
-	public static Employee find(int id, EmployeeDAO employeeDAO) {
+	public static Employee find(EmployeeDAO employeeDAO, int id) {
 		return employeeDAO.findDAO(id);
 	}
 	
@@ -89,6 +104,7 @@ public class Employee extends Person {
     public String toString() {
         return "Employee{" +
                 "idEmployee=" + idEmployee +
+                ", registrationCode='" + registrationCode + '\'' +
                 ", password='" + password + '\'' +
                 ", role=" + role +
                 "} " + super.toString();
@@ -100,6 +116,7 @@ public class Employee extends Person {
         if (o == null || getClass() != o.getClass()) return false;
         Employee employee = (Employee) o;
         return idEmployee == employee.idEmployee && 
+               Objects.equals(registrationCode, employee.registrationCode) &&
                Objects.equals(password, employee.password) && 
                role == employee.role && 
                super.equals(o);
@@ -107,7 +124,7 @@ public class Employee extends Person {
 
     @Override
     public int hashCode() {
-        return Objects.hash(idEmployee, password, role, super.hashCode());
+        return Objects.hash(idEmployee, registrationCode, password, role, super.hashCode());
     }
     
     
