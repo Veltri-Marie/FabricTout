@@ -29,16 +29,17 @@ public class EmployeeDAO extends DAO<Employee> {
 
     @Override
     public boolean createDAO(Employee employee) {
-        String procedureCall = "{call add_employee(?, ?, ?, ?, ?, ?, ?)}";
+        String procedureCall = "{call add_employee(?, ?, ?, ?, ?, ?, ?, ?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
         	
-        	stmt.setString(1, employee.getRegistrationCode());
-            stmt.setString(2, employee.getFirstName());
-            stmt.setString(3, employee.getLastName());
-            stmt.setDate(4, Date.valueOf(employee.getBirthdate()));
-            stmt.setString(5, employee.getPhoneNumber());
-            stmt.setString(6, employee.getPassword());
-            stmt.setString(7, employee.getRole().toString());
+        	stmt.setInt(1, employee.getIdEmployee());
+        	stmt.setString(2, employee.getRegistrationCode());
+            stmt.setString(3, employee.getFirstName());
+            stmt.setString(4, employee.getLastName());
+            stmt.setDate(5, Date.valueOf(employee.getBirthdate()));
+            stmt.setString(6, employee.getPhoneNumber());
+            stmt.setString(7, employee.getPassword());
+            stmt.setString(8, employee.getRole().toString());
 
             stmt.execute();
 

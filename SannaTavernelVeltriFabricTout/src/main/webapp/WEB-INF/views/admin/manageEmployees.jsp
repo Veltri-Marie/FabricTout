@@ -9,12 +9,9 @@
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/css/bootstrap.css" />
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/css/style.css" />
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/css/responsive.css" />
-    
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.1.3/assets/owl.carousel.min.css" />
-    <link href="https://fonts.googleapis.com/css?family=Poppins:400,600,700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Add an Employee</h1>
+<h1>Add an Employee</h1>
     <form action="Admin" method="post">
         <label for="firstName">First Name:</label>
         <input type="text" id="firstName" name="firstName" required/><br>
@@ -48,6 +45,7 @@
             <th>Last Name</th>
             <th>First Name</th>
             <th>Role</th>
+            <th>Actions</th>
         </tr>
         <%
             List<Employee> employees = (List<Employee>) request.getAttribute("employees");
@@ -59,6 +57,21 @@
                 <td><%= employee.getFirstName() %></td>
                 <td><%= employee.getLastName() %></td>
                 <td><%= employee.getRole() %></td>
+                <td>
+                    <!-- Edit Button -->
+                    <form action="Admin" method="get" style="display:inline;">
+                        <input type="hidden" name="action" value="edit" />
+                        <input type="hidden" name="idEmployee" value="<%= employee.getIdEmployee() %>" />
+                        <button type="submit">Edit</button>
+                    </form>
+
+                    <!-- Delete Button -->
+                    <form action="Admin" method="get" style="display:inline;">
+                        <input type="hidden" name="action" value="delete" />
+                        <input type="hidden" name="idEmployee" value="<%= employee.getIdEmployee() %>" />
+                        <button type="submit">Delete</button>
+                    </form>
+                </td>
             </tr>
         <%
                 }
@@ -66,6 +79,5 @@
         %>
     </table>
 
-    <script src="${pageContext.request.contextPath}/resources/js/bootstrap.js"></script>
 </body>
 </html>

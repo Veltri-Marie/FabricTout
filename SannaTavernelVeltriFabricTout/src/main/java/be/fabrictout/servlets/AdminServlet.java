@@ -35,7 +35,15 @@ public class AdminServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {        
-        loadAllEmployees(request, response);
+        String action = request.getParameter("action");
+        
+        if ("edit".equals(action)) {
+            editEmployee(request, response);
+        } else if ("delete".equals(action)) {
+            deleteEmployee(request, response);
+        } else {
+            loadAllEmployees(request, response);
+        }
     }
 
     @Override
@@ -45,15 +53,15 @@ public class AdminServlet extends HttpServlet {
 
     private void loadAllEmployees(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         try {
-            List<Employee> employees = Employee.findAll(employeeDAO); 
-            request.setAttribute("employees", employees); 
+            List<Employee> employees = Employee.findAll(employeeDAO);
+            request.setAttribute("employees", employees);
 
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
             dispatcher.forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Erreur lors du chargement de la liste des employés.");
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
+            request.setAttribute("error", "Error loading the employee list.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
             dispatcher.forward(request, response);
         }
     }
@@ -73,8 +81,8 @@ public class AdminServlet extends HttpServlet {
             password == null || password.isEmpty() ||
             role == null || role.isEmpty()) {
 
-            request.setAttribute("error", "Tous les champs doivent être remplis.");
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
+            request.setAttribute("error", "All fields must be filled.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
             dispatcher.forward(request, response);
             return;
         }
@@ -90,16 +98,42 @@ public class AdminServlet extends HttpServlet {
             if (created) {
                 loadAllEmployees(request, response); 
             } else {
-                request.setAttribute("error", "Erreur lors de la création de l'employé.");
-                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
+                request.setAttribute("error", "Error creating employee.");
+                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
                 dispatcher.forward(request, response);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Erreur interne lors de la création de l'employé.");
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/addEmployee.jsp");
+            request.setAttribute("error", "Internal error creating employee.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
             dispatcher.forward(request, response);
         }
     }
 
+    private void editEmployee(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int idEmployee = Integer.parseInt(request.getParameter("idEmployee"));
+    }
+
+    private void deleteEmployee(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int idEmployee = Integer.parseInt(request.getParameter("idEmployee"));
+        
+        try {
+        	Employee employee = Employee.find(employeeDAO, idEmployee);
+        	
+            boolean deleted = employee.delete(employeeDAO);
+
+            if (deleted) {
+                loadAllEmployees(request, response);
+            } else {
+                request.setAttribute("error", "Error deleting employee.");
+                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
+                dispatcher.forward(request, response);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Internal error deleting employee.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
+            dispatcher.forward(request, response);
+        }
+    }
 }
