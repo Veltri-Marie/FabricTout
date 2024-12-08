@@ -34,8 +34,14 @@ public class LoginServlet extends HttpServlet {
     }
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/user/index.jsp");
-        dispatcher.forward(request, response);
+        String action = request.getParameter("action");
+
+        if ("logout".equals(action)) {
+            logout(request, response);
+        } else {
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/user/index.jsp");
+            dispatcher.forward(request, response);
+        }
     }
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -98,5 +104,18 @@ public class LoginServlet extends HttpServlet {
             RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/user/index.jsp");
             dispatcher.forward(request, response);
         }
+    }
+    
+    private void logout(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+
+        Cookie cookie = new Cookie("idEmployee", "");
+        cookie.setMaxAge(0); 
+        response.addCookie(cookie);
+
+        response.sendRedirect(request.getContextPath() + "/Login");
     }
 }
