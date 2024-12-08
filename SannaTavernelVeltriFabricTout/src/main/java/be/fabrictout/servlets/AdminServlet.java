@@ -48,7 +48,15 @@ public class AdminServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        addEmployee(request, response);
+        String idEmployeeParam = request.getParameter("idEmployee");
+        
+        if (idEmployeeParam != null && !idEmployeeParam.isEmpty()) {
+            // Edit existing employee
+            editEmployeeDetails(request, response);
+        } else {
+            // Add new employee
+            addEmployee(request, response);
+        }
     }
 
     private void loadAllEmployees(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -66,6 +74,10 @@ public class AdminServlet extends HttpServlet {
         }
     }
 
+    private String generateRegistrationCode(String firstName, String lastName) {
+        return firstName.substring(0, 3).toUpperCase() + lastName.toUpperCase();
+    }
+    
     private void addEmployee(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String firstName = request.getParameter("firstName");
         String lastName = request.getParameter("lastName");
@@ -88,7 +100,7 @@ public class AdminServlet extends HttpServlet {
         }
 
         try {
-            String registrationCode = firstName.substring(0, 1).toUpperCase() + lastName.toUpperCase();
+            String registrationCode = generateRegistrationCode(firstName, lastName); 
             LocalDate birthDateParsed = LocalDate.parse(birthDate);
             int employeeId = Employee.getNextId(employeeDAO);
 
@@ -112,6 +124,50 @@ public class AdminServlet extends HttpServlet {
 
     private void editEmployee(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int idEmployee = Integer.parseInt(request.getParameter("idEmployee"));
+        
+        try {
+            Employee employee = Employee.find(employeeDAO, idEmployee);
+            request.setAttribute("employee", employee);
+
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
+            dispatcher.forward(request, response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Error fetching employee data.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
+            dispatcher.forward(request, response);
+        }
+    }
+
+    private void editEmployeeDetails(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        int idEmployee = Integer.parseInt(request.getParameter("idEmployee"));
+        String firstName = request.getParameter("firstName");
+        String lastName = request.getParameter("lastName");
+        String birthDate = request.getParameter("birthDate");
+        String phoneNumber = request.getParameter("phoneNumber");
+        String registrationCode = generateRegistrationCode(firstName, lastName); 
+        String password = request.getParameter("password");
+        String role = request.getParameter("role");
+
+        try {
+            LocalDate birthDateParsed = LocalDate.parse(birthDate);
+
+            Employee employee = new Employee(firstName, lastName, birthDateParsed, phoneNumber, idEmployee, registrationCode, password, Role.valueOf(role.toUpperCase()));
+            boolean updated = employee.update(employeeDAO); 
+
+            if (updated) {
+                loadAllEmployees(request, response); 
+            } else {
+                request.setAttribute("error", "Error updating employee.");
+                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
+                dispatcher.forward(request, response);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Error updating employee.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/admin/manageEmployees.jsp");
+            dispatcher.forward(request, response);
+        }
     }
 
     private void deleteEmployee(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
