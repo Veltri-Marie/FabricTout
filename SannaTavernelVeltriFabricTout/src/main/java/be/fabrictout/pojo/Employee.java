@@ -1,6 +1,7 @@
 package be.fabrictout.pojo;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,7 +17,12 @@ public class Employee extends Person {
 
     
     // CONSTRUCTORS
-    public Employee() {}
+    public Employee() {
+		if (maintenances == null) {
+			maintenances = new ArrayList<>();
+		}
+		
+    }
     
     public Employee(String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
             int idEmployee, String registrationCode, String password, Role role) {
@@ -97,6 +103,9 @@ public class Employee extends Person {
 	}
     
 	public void addMaintenance(Maintenance maintenance) {
+		if (maintenances == null) {
+			maintenances = new ArrayList<>();
+		}
 		maintenances.add(maintenance);
 	}
     

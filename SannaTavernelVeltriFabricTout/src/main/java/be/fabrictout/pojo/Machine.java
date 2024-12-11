@@ -1,27 +1,40 @@
 package be.fabrictout.pojo;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import be.fabrictout.dao.EmployeeDAO;
+import be.fabrictout.dao.MachineDAO;
 
 public class Machine {
     // ATTRIBUTES
     private int idMachine;
     private Type type;
     private double size;
-    private Status status;
-    private List<Site> sites;
+    private State state;
+    private Site site;
     private List<Maintenance> maintenances;
+    private List<Zone> zones;
     
 
     // CONSTRUCTORS
-	public Machine() {}
+	public Machine() 
+	{
+		if (maintenances == null) {
+			maintenances = new ArrayList<>();
+		}
+		if (zones == null) {
+			zones = new ArrayList<>();
+		}
+	}
 	
-    public Machine(int idMachine, Type type, double size, Status status, Site site) {
+    public Machine(int idMachine, Type type, double size, State state, Site site) {
         this.idMachine = idMachine;
         this.type = type;
         this.size = size;
-        this.status = status;
-        addSite(site);
+        this.state = state;
+        this.site = site;
         site.addMachine(this);
     }
 
@@ -46,20 +59,20 @@ public class Machine {
         return size;
     }
 
-    public Status getStatus() {
-        return status;
+    public State getState() {
+        return state;
     }
     
-	public void setStatus(Status status) {
-		this.status = status;
+	public void setState(State state) {
+		this.state = state;
 	}
 	
-	public List<Site> getSites() {
-		return sites;
+	public Site getSite() {
+		return site;
 	}
 	
-	public void setSites(List<Site> sites) {
-		this.sites = sites;
+	public void setSite(Site site) {
+		this.site = site;
 	}
 	
 	public List<Maintenance> getMaintenances() {
@@ -70,14 +83,56 @@ public class Machine {
 		this.maintenances = maintenances;
 	}
 	
+	public List<Zone> getZones() {
+		return zones;
+	}
+	
+	public void setZones(List<Zone> zones) {
+		this.zones = zones;
+	}
+	
 	// METHODS
+    public boolean create(MachineDAO machineDAO) {
+        return machineDAO.createDAO(this); 
+    }
+
+    public static int getNextId(MachineDAO machineDAO) {
+        return machineDAO.getNextIdDAO(); 
+    }
+    
+	public boolean delete(MachineDAO machineDAO) {
+		return machineDAO.deleteDAO(this);
+	}
+	
+	public boolean update(MachineDAO machineDAO) {
+		return machineDAO.updateDAO(this);
+	}
+	
+	public static Machine find(MachineDAO machineDAO, int id) {
+		return machineDAO.findDAO(id);
+	}
+	
+	public static List<Machine> findAll(MachineDAO machineDAO) {
+		return machineDAO.findAllDAO();
+	}
+	
 	public void addMaintenance(Maintenance maintenance) {
+		if (maintenances == null) {
+			maintenances = new ArrayList<>();
+		}
 		maintenances.add(maintenance);
 	}
 	
-	public void addSite(Site site) {
-		sites.add(site);
+	public void addZone(Zone zone) {
+		if (zones == null) {
+			zones = new ArrayList<>();
+		}
+		zones.add(zone);
+		zone.addMachine(this);
+
 	}
+	
+	
 	
     @Override
     public String toString() {
@@ -85,7 +140,7 @@ public class Machine {
                 "idMachine=" + idMachine +
                 ", type=" + type +
                 ", size=" + size +
-                ", status=" + status +
+                ", status=" + state +
                 '}';
     }
 
@@ -97,12 +152,12 @@ public class Machine {
         return idMachine == machine.idMachine &&
                Double.compare(machine.size, size) == 0 &&
                type == machine.type &&
-               status == machine.status;
+        	   state == machine.state;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(idMachine, type, size, status);
+        return Objects.hash(idMachine, type, size, state);
     }
 }
 

@@ -14,6 +14,7 @@
 <h1><%= request.getAttribute("employee") != null ? "Edit Employee" : "Add Employee" %></h1>
     <form action="Admin" method="post">
         <input type="hidden" name="idEmployee" value="<%= request.getAttribute("employee") != null ? ((Employee) request.getAttribute("employee")).getIdEmployee() : "" %>" />
+        
         <label for="firstName">First Name:</label>
         <input type="text" id="firstName" name="firstName" value="<%= request.getAttribute("employee") != null ? ((Employee) request.getAttribute("employee")).getFirstName() : "" %>" required/><br>
         
@@ -31,9 +32,15 @@
 
         <label for="role">Role:</label>
         <select name="role">
-            <option value="ADMIN" <%= request.getAttribute("employee") != null && ((Employee) request.getAttribute("employee")).getRole() == Role.ADMIN ? "selected" : "" %>>Administrator</option>
-            <option value="MANAGER" <%= request.getAttribute("employee") != null && ((Employee) request.getAttribute("employee")).getRole() == Role.MANAGER ? "selected" : "" %>>Manager</option>
-            <option value="WORKER" <%= request.getAttribute("employee") != null && ((Employee) request.getAttribute("employee")).getRole() == Role.WORKER ? "selected" : "" %>>Worker</option>
+            <% 
+                for (Role role : Role.values()) { 
+            %>
+                <option value="<%= role.name() %>" <%= request.getAttribute("employee") != null && ((Employee) request.getAttribute("employee")).getRole() == role ? "selected" : "" %>> 
+                    <%= role.name().replaceAll("_", " ") %> 
+                </option>
+            <% 
+                }
+            %>
         </select><br>
         
         <button type="submit"><%= request.getAttribute("employee") != null ? "Save" : "Add" %></button>

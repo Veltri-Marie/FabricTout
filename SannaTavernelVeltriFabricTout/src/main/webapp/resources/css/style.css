@@ -9,6 +9,14 @@ body {
   padding-bottom: 90px;
 }
 
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .layout_padding2 {
   padding-top: 45px;
   padding-bottom: 45px;
