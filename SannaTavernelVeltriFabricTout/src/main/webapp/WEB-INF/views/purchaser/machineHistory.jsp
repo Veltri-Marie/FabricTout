@@ -71,10 +71,13 @@
             Boolean showReorderButton = (Boolean) request.getAttribute("showReorderButton");
             if (showReorderButton != null && showReorderButton) {
         %>
-            <form action="Purchaser" method="get">
-                <input type="hidden" name="action" value="orderMachine" />
-                <button type="submit" class="btn btn-warning">Re-order Machine</button>
-            </form>
+            <form action="Purchaser" method="POST">
+	    		<input type="hidden" name="action" value="submitOrder"/>
+	    		<input type="hidden" name="machineId" value="<%= machine.getIdMachine() %>"/>
+	
+	    		<button type="submit" class="btn btn-warning">Re-order Machine</button>
+			</form>
+
         <%
             }
         %>
