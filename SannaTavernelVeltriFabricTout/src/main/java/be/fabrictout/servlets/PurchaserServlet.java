@@ -98,6 +98,12 @@ public class PurchaserServlet extends HttpServlet {
                 request.setAttribute("machine", machine);
                 request.setAttribute("maintenanceHistory", machine.getMaintenances());
 
+                if (machine.getMaintenances() != null && machine.getMaintenances().size() > 6) {
+                    request.setAttribute("showReorderButton", true);
+                } else {
+                    request.setAttribute("showReorderButton", false);
+                }
+
                 RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
                 dispatcher.forward(request, response);
             } catch (Exception e) {
@@ -108,6 +114,7 @@ public class PurchaserServlet extends HttpServlet {
             }
         }
     }
+
 
     
 

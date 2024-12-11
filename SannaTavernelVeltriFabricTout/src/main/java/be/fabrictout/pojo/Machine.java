@@ -120,15 +120,19 @@ public class Machine {
 		if (maintenances == null) {
 			maintenances = new ArrayList<>();
 		}
-		maintenances.add(maintenance);
+		if(!maintenances.contains(maintenance))
+			maintenances.add(maintenance);
 	}
 	
 	public void addZone(Zone zone) {
 		if (zones == null) {
 			zones = new ArrayList<>();
 		}
-		zones.add(zone);
-		zone.addMachine(this);
+		if (!zones.contains(zone))
+		{
+			zones.add(zone);
+			zone.addMachine(this);
+		}
 
 	}
 	
