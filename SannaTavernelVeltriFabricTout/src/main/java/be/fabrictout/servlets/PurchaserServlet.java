@@ -113,14 +113,56 @@ public class PurchaserServlet extends HttpServlet {
                 dispatcher.forward(request, response);
             }
         }
-    }
-
-
-    
+    }    
 
     private void processMachineOrder(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-       
+        String machineIdParam = request.getParameter("machineId");
+
+        if (machineIdParam != null) {
+            try {
+                Machine machine = Machine.find(machineDAO, Integer.parseInt(machineIdParam));
+                if (machine == null) {
+                    request.setAttribute("error", "Machine not found.");
+                    RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
+                    dispatcher.forward(request, response);
+                    return;
+                }
+
+                if (machine.getMaintenances() != null && machine.getMaintenances().size() > 6) {
+                    Machine newMachine = new Machine(Machine.getNextId(machineDAO), machine.getType(), machine.getSize(), State.OPERATIONAL, machine.getSite());
+
+                    for (Zone zone : machine.getZones()) {
+                        newMachine.addZone(zone);
+                    }
+
+                    boolean success = newMachine.create(machineDAO);
+
+                    if (success) {
+                    	machine.delete(machineDAO);
+
+                        request.setAttribute("success", "Machine successfully re-ordered.");
+                        response.sendRedirect("Purchaser");
+                    } else {
+                        request.setAttribute("error", "Error re-ordering the machine.");
+                        RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
+                        dispatcher.forward(request, response);
+                    }
+                } else {
+                    request.setAttribute("error", "The machine does not have enough maintenance records to qualify for re-order.");
+                    RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
+                    dispatcher.forward(request, response);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                request.setAttribute("error", "An error occurred while processing the order.");
+                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
+                dispatcher.forward(request, response);
+            }
+        } else {
+            request.setAttribute("error", "Machine ID is missing.");
+            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
+            dispatcher.forward(request, response);
+        }
     }
-
-
 }
