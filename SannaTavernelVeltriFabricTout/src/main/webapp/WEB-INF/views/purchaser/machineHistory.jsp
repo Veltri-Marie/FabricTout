@@ -14,8 +14,6 @@
 
     <%
         Machine machine = (Machine) request.getAttribute("machine");
-    	System.out.println(machine);
-    
         if (machine != null) {
     %>
     
@@ -25,17 +23,14 @@
         <p><strong>Site:</strong> <%= machine.getSite().getName() %></p>
         <p><strong>Zones:</strong>
             <%
-
-            List<Zone> zones = machine.getZones();
-            System.out.println(zones);
-            if (zones != null && !zones.isEmpty()) {
-
-                for (Zone zone : zones) {
+                List<Zone> zones = machine.getZones();
+                if (zones != null && !zones.isEmpty()) {
+                    for (Zone zone : zones) {
             %>
                 <%= zone.getLetter() + " (" + zone.getColor() + ") " %>
             <%
+                    }
                 }
-            }
             %>
         </p>
 
@@ -71,6 +66,19 @@
                 out.println("<p>No maintenance history available.</p>");
             }
         %>
+
+        <%
+            Boolean showReorderButton = (Boolean) request.getAttribute("showReorderButton");
+            if (showReorderButton != null && showReorderButton) {
+        %>
+            <form action="Purchaser" method="get">
+                <input type="hidden" name="action" value="orderMachine" />
+                <button type="submit" class="btn btn-warning">Re-order Machine</button>
+            </form>
+        <%
+            }
+        %>
+
     <% } else { %>
         <p>Machine not found.</p>
     <% } %>

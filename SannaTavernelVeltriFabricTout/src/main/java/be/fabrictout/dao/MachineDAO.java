@@ -4,12 +4,14 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import be.fabrictout.pojo.Color;
+import be.fabrictout.pojo.Employee;
 import be.fabrictout.pojo.Letter;
 import be.fabrictout.pojo.Machine;
 import be.fabrictout.pojo.Maintenance;
@@ -174,6 +176,7 @@ public class MachineDAO extends DAO<Machine> {
         machine = new Machine(machineId, machineType, machineSize, machineState, site);
 
         String zoneList = rs.getString("zone_list");
+        System.out.println(zoneList);
         if (zoneList != null && !zoneList.isEmpty()) {
             String[] zoneEntries = zoneList.split(",");
             for (String entry : zoneEntries) {
@@ -186,6 +189,7 @@ public class MachineDAO extends DAO<Machine> {
                             site
                     );
                     machine.addZone(zone);
+                    
                 }
             }
         }
@@ -194,18 +198,22 @@ public class MachineDAO extends DAO<Machine> {
         if (maintenanceList != null && !maintenanceList.isEmpty()) {
             String[] maintenanceEntries = maintenanceList.split(",");
             for (String entry : maintenanceEntries) {
-                String[] parts = entry.split(":");
+                String[] parts = entry.split(";");
                 if (parts.length == 5) {
-                    Maintenance maintenance = new Maintenance(
-                            Integer.parseInt(parts[0].trim()),
-                            LocalDate.parse(parts[1].trim()),
-                            Integer.parseInt(parts[2].trim()),
-                            parts[3].trim(),
-                            Status.valueOf(parts[4].trim()),
-                            machine,
-                            null
-                    );
-                    machine.addMaintenance(maintenance);
+                    try {
+                        Maintenance maintenance = new Maintenance(
+                                Integer.parseInt(parts[0].trim()),
+                                LocalDate.parse(parts[1].trim()),
+                                Integer.parseInt(parts[2].trim()),
+                                parts[3].trim(),
+                                Status.valueOf(parts[4].trim()),
+                                machine,
+                                new Employee()
+                        );
+                        machine.addMaintenance(maintenance);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
