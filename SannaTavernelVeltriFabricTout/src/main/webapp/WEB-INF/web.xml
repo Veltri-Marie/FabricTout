@@ -56,4 +56,14 @@
     <url-pattern>/Manager</url-pattern> 
 </servlet-mapping>
 
+<servlet>
+    <servlet-name>PurchaserServlet</servlet-name>
+    <servlet-class>be.fabrictout.servlets.PurchaserServlet</servlet-class>
+</servlet>
+
+<servlet-mapping>
+    <servlet-name>PurchaserServlet</servlet-name>
+    <url-pattern>/Purchaser</url-pattern> 
+</servlet-mapping>
+
 </web-app>

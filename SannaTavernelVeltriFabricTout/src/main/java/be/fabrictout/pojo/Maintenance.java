@@ -1,8 +1,12 @@
 package be.fabrictout.pojo;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import be.fabrictout.dao.EmployeeDAO;
+import be.fabrictout.dao.MaintenanceDAO;
 
 public class Maintenance {
     // ATTRIBUTES
@@ -15,7 +19,14 @@ public class Maintenance {
     private List<Employee> employees;
 
     // CONSTRUCTORS
+	public Maintenance() {
+		if (employees == null) {
+			employees = new ArrayList<>();
+		}
+	}
+	
     public Maintenance(int idMaintenance, LocalDate date, int duration, String report, Status status, Machine machine, Employee employee) {
+    	
         this.idMaintenance = idMaintenance;
         this.date = date;
         this.duration = duration;
@@ -84,7 +95,35 @@ public class Maintenance {
     }
     
     // METHODS
+    public boolean create(MaintenanceDAO maintenanceDAO) {
+        return maintenanceDAO.createDAO(this); 
+    }
+
+    public static int getNextId(MaintenanceDAO maintenanceDAO) {
+        return maintenanceDAO.getNextIdDAO(); 
+    }
+    
+    
+	public boolean delete(MaintenanceDAO maintenanceDAO) {
+		return maintenanceDAO.deleteDAO(this);
+	}
+	
+	public boolean update(MaintenanceDAO maintenanceDAO) {
+		return maintenanceDAO.updateDAO(this);
+	}
+	
+	public static Maintenance find(MaintenanceDAO maintenanceDAO, int id) {
+		return maintenanceDAO.findDAO(id);
+	}
+	
+	public static List<Maintenance> findAll(MaintenanceDAO maintenanceDAO) {
+		return maintenanceDAO.findAllDAO();
+	}
+	
 	public void addEmployee(Employee employee) {
+		if (employees == null) {
+            employees = new ArrayList<>();
+                    }
 		employees.add(employee);
 	}
 	
