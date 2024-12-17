@@ -2,7 +2,6 @@ package be.fabrictout.servlets;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.RequestDispatcher;
@@ -13,20 +12,14 @@ import javax.servlet.http.HttpServletResponse;
 
 import be.fabrictout.connection.FabricToutConnection;
 import be.fabrictout.dao.MachineDAO;
-import be.fabrictout.dao.SiteDAO;
-import be.fabrictout.dao.ZoneDAO;
-import be.fabrictout.pojo.Machine;
-import be.fabrictout.pojo.Site;
-import be.fabrictout.pojo.Type;
-import be.fabrictout.pojo.State;
-import be.fabrictout.pojo.Zone;
+import be.fabrictout.javabeans.Machine;
+import be.fabrictout.javabeans.State;
+import be.fabrictout.javabeans.Zone;
 
 public class PurchaserServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private Connection conn;
     private MachineDAO machineDAO;
-    private SiteDAO siteDAO;
-    private ZoneDAO zoneDAO;
     private static final double MAX_MACHINE_SIZE = 25.0;
 
     @Override
@@ -34,8 +27,6 @@ public class PurchaserServlet extends HttpServlet {
         super.init();
         conn = FabricToutConnection.getInstance();
         machineDAO = new MachineDAO(conn);
-        siteDAO = new SiteDAO(conn);
-        zoneDAO = new ZoneDAO(conn);
     }
 
     public PurchaserServlet() {
@@ -47,29 +38,17 @@ public class PurchaserServlet extends HttpServlet {
         String action = request.getParameter("action");
 
         if ("viewMachineHistory".equals(action)) {
-        	System.out.println("PurchaserServlet : viewMachineHistory");
             viewMachineHistory(request, response);
-        } else if ("orderMachine".equals(action)) {
-        	System.out.println("PurchaserServlet : orderMachine");
+        } else if ("submitOrder".equals(action)) {
         	processMachineOrder(request, response);
         } else {
-        	System.out.println("PurchaserServlet : loadAllMachines");
             loadAllMachines(request, response);
         }
     }
 
-    
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String action = request.getParameter("action");
-
-        if ("submitOrder".equals(action)) {
-        	System.out.println("PurchaserServlet : processMachineOrder");
-            processMachineOrder(request, response);  
-        } else {
-        	System.out.println("PurchaserServlet : doGet");
-            doGet(request, response);
-        }
+    	doGet(request, response);
     }
 
 
@@ -78,6 +57,7 @@ public class PurchaserServlet extends HttpServlet {
         try {
             List<Machine> machines = Machine.findAll(machineDAO);
             request.setAttribute("machines", machines);
+                      
             RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineList.jsp");
             dispatcher.forward(request, response);
         } catch (Exception e) {
@@ -129,7 +109,7 @@ public class PurchaserServlet extends HttpServlet {
                 }
 
                 if (machine.getMaintenances() != null && machine.getMaintenances().size() > 6) {
-                    Machine newMachine = new Machine(Machine.getNextId(machineDAO), machine.getType(), machine.getSize(), State.OPERATIONAL, machine.getSite());
+                    Machine newMachine = new Machine(Machine.getNextId(machineDAO), machine.getType(), machine.getSize(), State.OPERATIONAL, machine.getZones());
 
                     for (Zone zone : machine.getZones()) {
                         newMachine.addZone(zone);

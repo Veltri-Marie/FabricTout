@@ -1,8 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.util.List" %>
-<%@ page import="be.fabrictout.pojo.Machine" %>
-<%@ page import="be.fabrictout.pojo.Site" %>
-<%@ page import="be.fabrictout.pojo.Zone" %>
+<%@ page import="be.fabrictout.javabeans.Machine" %>
+<%@ page import="be.fabrictout.javabeans.Site" %>
+<%@ page import="be.fabrictout.javabeans.Zone" %>
 
 <html>
 <head>
@@ -34,11 +34,21 @@
                 <td><%= machine.getIdMachine() %></td>
                 <td><%= machine.getType() %></td>
                 <td><%= machine.getSize() %></td>
-                <td><%= machine.getSite().getName() %></td>
                 
                 <td>
                     <%
                         List<Zone> zones = machine.getZones();
+                        if (zones != null && !zones.isEmpty()) {
+                            Site site = zones.get(0).getSite();
+                            out.print(site.getName());
+                        } else {
+                            out.print("No site available");
+                        }
+                    %>
+                </td>
+                
+                <td>
+                    <%
                         if (zones != null && !zones.isEmpty()) {
                             for (Zone zone : zones) {
                     %>

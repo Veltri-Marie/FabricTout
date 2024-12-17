@@ -9,14 +9,17 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import be.fabrictout.pojo.Employee;
-import be.fabrictout.pojo.Machine;
-import be.fabrictout.pojo.Maintenance;
-import be.fabrictout.pojo.Role;
-import be.fabrictout.pojo.Site;
-import be.fabrictout.pojo.State;
-import be.fabrictout.pojo.Status;
-import be.fabrictout.pojo.Type;
+import be.fabrictout.javabeans.Color;
+import be.fabrictout.javabeans.Letter;
+import be.fabrictout.javabeans.Machine;
+import be.fabrictout.javabeans.Maintenance;
+import be.fabrictout.javabeans.Manager;
+import be.fabrictout.javabeans.Site;
+import be.fabrictout.javabeans.State;
+import be.fabrictout.javabeans.Status;
+import be.fabrictout.javabeans.Type;
+import be.fabrictout.javabeans.Worker;
+import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
 
 public class MaintenanceDAO extends DAO<Maintenance> {
@@ -25,9 +28,8 @@ public class MaintenanceDAO extends DAO<Maintenance> {
         super(conn);
     }
 
-    @Override
     public int getNextIdDAO() {
-    	System.out.println("MaintenanceDAO : getNextIdDAO : ");
+    	System.out.println("MaintenanceDAO : getNextIdDAO");
         String procedureCall = "{call get_next_maintenance_id(?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
             stmt.registerOutParameter(1, OracleTypes.INTEGER);
@@ -41,21 +43,24 @@ public class MaintenanceDAO extends DAO<Maintenance> {
 
     @Override
     public boolean createDAO(Maintenance maintenance) {
-    	System.out.println("MaintenanceDAO : createDAO : ");
-        String procedureCall = "{call add_maintenance(?, ?, ?, ?, ?, ?, ?)}";
+        System.out.println("MaintenanceDAO : createDAO");
+        String procedureCall = "{call add_maintenance(?, ?, ?, ?, ?, ?, ?, ?)}"; // 8 paramètres
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
+          
             stmt.setInt(1, maintenance.getIdMaintenance());
             stmt.setDate(2, Date.valueOf(maintenance.getDate()));
-            stmt.setString(3, String.format("0 %02d:00:00", maintenance.getDuration()));
+            stmt.setInt(3, maintenance.getDuration());
             stmt.setString(4, maintenance.getReport());
             stmt.setString(5, maintenance.getStatus().toString());
-            stmt.setInt(6, maintenance.getMachine().getIdMachine());
+            stmt.setInt(6, maintenance.getManager().getIdPerson());
+            stmt.setInt(7, maintenance.getMachine().getIdMachine());
 
-            String employeeIds = String.join(",",
-                    maintenance.getEmployees().stream()
-                            .map(emp -> String.valueOf(emp.getIdEmployee()))
+            String workerIds = String.join(",",
+                    maintenance.getWorkers().stream()
+                            .map(worker -> String.valueOf(worker.getIdPerson()))
                             .toArray(String[]::new));
-            stmt.setString(7, employeeIds);
+            System.out.println("WorkerIds : " + workerIds);
+            stmt.setString(8, workerIds); 
 
             stmt.execute();
             return true;
@@ -65,9 +70,10 @@ public class MaintenanceDAO extends DAO<Maintenance> {
         }
     }
 
+
     @Override
     public boolean deleteDAO(Maintenance maintenance) {
-    	System.out.println("MaintenanceDAO : deleteDAO : ");
+    	System.out.println("MaintenanceDAO : deleteDAO");
         String procedureCall = "{call delete_maintenance(?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
             stmt.setInt(1, maintenance.getIdMaintenance());
@@ -81,36 +87,40 @@ public class MaintenanceDAO extends DAO<Maintenance> {
 
     @Override
     public boolean updateDAO(Maintenance maintenance) {
-    	System.out.println("MaintenanceDAO : updateDAO : ");
-        String procedureCall = "{call update_maintenance(?, ?, ?, ?, ?, ?, ?)}";
+        System.out.println("MaintenanceDAO : updateDAO");
+
+        String procedureCall = "{call update_maintenance(?, ?, ?, ?, ?, ?, ?, ?)}"; // 8 paramètres
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
+
+            // Paramètres de la maintenance
             stmt.setInt(1, maintenance.getIdMaintenance());
             stmt.setDate(2, Date.valueOf(maintenance.getDate()));
-            stmt.setString(3, String.format("0 %02d:00:00", maintenance.getDuration()));
+            stmt.setInt(3, maintenance.getDuration());
             stmt.setString(4, maintenance.getReport());
             stmt.setString(5, maintenance.getStatus().toString());
             stmt.setInt(6, maintenance.getMachine().getIdMachine());
+            stmt.setInt(7, maintenance.getManager().getIdPerson());
 
-            String employeeIds = String.join(",",
-                    maintenance.getEmployees().stream()
-                            .map(emp -> String.valueOf(emp.getIdEmployee()))
+            String workerIds = String.join(",",
+                    maintenance.getWorkers().stream()
+                            .map(worker -> String.valueOf(worker.getIdPerson()))
                             .toArray(String[]::new));
-            stmt.setString(7, employeeIds);
+            stmt.setString(8, workerIds); 
 
-            stmt.registerOutParameter(8, OracleTypes.INTEGER);
             stmt.execute();
+            System.out.println("Maintenance mise à jour avec succès.");
+            return true;
 
-            int rowsUpdated = stmt.getInt(8);
-            return rowsUpdated > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
     }
 
+
     @Override
     public Maintenance findDAO(int id) {
-    	System.out.println("MaintenanceDAO : findDAO : ");
+    	System.out.println("MaintenanceDAO : findDAO");
         String procedureCall = "{call find_maintenance(?, ?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
             stmt.setInt(1, id);
@@ -130,7 +140,7 @@ public class MaintenanceDAO extends DAO<Maintenance> {
 
     @Override
     public List<Maintenance> findAllDAO() {
-    	System.out.println("MaintenanceDAO : findAllDAO : ");
+    	System.out.println("MaintenanceDAO : findAllDAO");
         String procedureCall = "{call find_all_maintenances(?)}";
         List<Maintenance> maintenances = new ArrayList<>();
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
@@ -147,55 +157,67 @@ public class MaintenanceDAO extends DAO<Maintenance> {
         }
         return maintenances;
     }
+    
+    private Maintenance setMaintenanceDAO(ResultSet rs) throws SQLException {
+        System.out.println("MaintenanceDAO : setMaintenanceDAO");
+        Maintenance maintenance = null;
 
-	private Maintenance setMaintenanceDAO(ResultSet rs) throws SQLException {
-		System.out.println("MaintenanceDAO : setMaintenanceDAO : ");
-		Maintenance maintenance = null;
-	    int maintenanceId = rs.getInt("id_maintenance");
-	    LocalDate maintenanceDate = LocalDate.parse(rs.getString("maintenance_date"));
-	    int duration = rs.getInt("maintenance_duration");
-	    String report = rs.getString("maintenance_report");
-	    Status status = Status.valueOf(rs.getString("maintenance_status"));
+        int maintenanceId = rs.getInt("id_maintenance");
+        LocalDate maintenanceDate = LocalDate.parse(rs.getString("maintenance_date"));
+        int duration = rs.getInt("maintenance_duration");
+        String report = rs.getString("maintenance_report");
+        Status status = Status.valueOf(rs.getString("maintenance_status"));
 
-	    Machine machine = new Machine(
-	        rs.getInt("id_machine"),
-	        Type.valueOf(rs.getString("machine_type")),
-	        rs.getDouble("machine_size"),
-	        State.valueOf(rs.getString("machine_state")),
-	        new Site()
-	    );
+        Machine machine = new Machine(
+            rs.getInt("machine_id"), 
+            Type.valueOf(rs.getString("machine_type")), 
+            rs.getDouble("machine_size"), 
+            State.valueOf(rs.getString("machine_state")), 
+            new ArrayList<>() 
+        );
 
-	    List<Employee> employees = new ArrayList<>();
-	    String employeeList = rs.getString("employee_list");
+        Manager manager = new Manager(
+            rs.getInt("manager_id"), // id_person
+            rs.getString("manager_firstName"), // firstName
+            rs.getString("manager_lastName"), // lastName
+            LocalDate.parse(rs.getString("manager_birthDate")), // birthDate
+            rs.getString("manager_phoneNumber"), // phoneNumber
+            rs.getString("manager_registrationCode"), // registration
+            rs.getString("manager_password"), // password
+            new Site() // site
+        );
 
-	    if (employeeList != null && !employeeList.isEmpty()) {
-	        String[] employeeEntries = employeeList.split(",");
-	        for (int i = 0; i < employeeEntries.length; i++) {
-	            String[] parts = employeeEntries[i].split(":");
-	            if (parts.length == 8) {
-	                Employee employee = new Employee(
-	                    parts[0].trim(),                
-	                    parts[1].trim(),             
-	                    LocalDate.parse(parts[2].trim()), 
-	                    parts[3].trim(),               
-	                    Integer.parseInt(parts[4].trim()), 
-	                    parts[5].trim(),                
-	                    parts[6].trim(),                
-	                    Role.valueOf(parts[7].trim())   
-	                );
+        List<Worker> workers = new ArrayList<>();
+        String workerList = rs.getString("worker_list");
+        if (workerList != null && !workerList.isEmpty()) {
+            String[] workerDetails = workerList.split(",");
+            for (String details : workerDetails) {
+                String[] parts = details.split(":");
+                Worker worker = new Worker(
+                    Integer.parseInt(parts[0]),        // id_person
+                    parts[1],                          // firstName
+                    parts[2],                          // lastName
+                    LocalDate.parse(parts[3]),         // birthDate
+                    parts[4],                          // phoneNumber
+                    parts[5],                          // registrationCode
+                    parts[6],                          // password
+            		new Site()						   // site
+                );
+                workers.add(worker);
+            }
+        }
 
-	                if (i == 0) {
-	            	    maintenance = new Maintenance(maintenanceId, maintenanceDate, duration, report, status, machine, employee);
-	                    
-	                } else {
-	                    employees.add(employee);
-	                    maintenance.addEmployee(employee);
-	                }
-	            }
-	        }
-	    }
-        return maintenance;	    
-	}
-
+        maintenance = new Maintenance(
+            maintenanceId,
+            maintenanceDate,
+            duration,
+            report,
+            status,
+            machine,
+            manager,
+            workers
+        );
+        return maintenance;
+    }
 
 }

@@ -1,0 +1,90 @@
+package be.fabrictout.javabeans;
+
+import java.io.Serializable;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import be.fabrictout.dao.WorkerDAO;
+
+public class Worker extends Employee implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    // ATTRIBUTES
+    private List<Maintenance> maintenances;
+    private Site site;
+
+    // CONSTRUCTORS
+    public Worker() {
+        super(); 
+		if (maintenances == null) {
+			maintenances = new ArrayList<>();
+		}
+    }
+
+    public Worker(int idPerson, String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
+            String registrationCode, String password, Site site) {
+        super(idPerson, firstName, lastName, birthDate, phoneNumber, registrationCode, password);
+		if (maintenances == null) {
+			maintenances = new ArrayList<>();
+		}
+        this.site = site;
+    }
+    
+    // METHODS
+    public static Worker find(WorkerDAO workerDAO, int id) {
+        return workerDAO.findDAO(id);
+    }
+    public static List<Worker> findAll(WorkerDAO workerDAO) {
+        return workerDAO.findAllDAO();
+    }
+
+    // PROPERTIES
+    public List<Maintenance> getMaintenances() {
+        return maintenances;
+    }
+
+    public void setMaintenances(List<Maintenance> maintenances) {
+        this.maintenances = maintenances;
+    }
+
+    public Site getSite() {
+        return site;
+    }
+
+    public void setSite(Site site) {
+        this.site = site;
+    }
+
+    // METHODS
+    public void addMaintenance(Maintenance maintenance) {
+        if (maintenances == null) {
+            maintenances = new ArrayList<>();
+        }
+        if (maintenance != null && !maintenances.contains(maintenance)) {
+            maintenances.add(maintenance);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Worker{" +
+                "maintenances=" + maintenances +
+                ", site=" + site +
+                "} " + super.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Worker worker = (Worker) o;
+        return maintenances.equals(worker.maintenances) && site.equals(worker.site) && super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return maintenances.hashCode() + site.hashCode() + super.hashCode();
+    }
+}
