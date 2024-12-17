@@ -1,8 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.util.List" %>
-<%@ page import="be.fabrictout.pojo.Machine" %>
-<%@ page import="be.fabrictout.pojo.Maintenance" %>
-<%@ page import="be.fabrictout.pojo.Zone" %>
+<%@ page import="be.fabrictout.javabeans.Machine" %>
+<%@ page import="be.fabrictout.javabeans.Maintenance" %>
+<%@ page import="be.fabrictout.javabeans.Zone" %>
 
 <html>
 <head>
@@ -16,23 +16,31 @@
         Machine machine = (Machine) request.getAttribute("machine");
         if (machine != null) {
     %>
-    
         <p><strong>Machine ID:</strong> <%= machine.getIdMachine() %></p>
         <p><strong>Type:</strong> <%= machine.getType() %></p>
         <p><strong>Size:</strong> <%= machine.getSize() %></p>
-        <p><strong>Site:</strong> <%= machine.getSite().getName() %></p>
-        <p><strong>Zones:</strong>
-            <%
-                List<Zone> zones = machine.getZones();
-                if (zones != null && !zones.isEmpty()) {
-                    for (Zone zone : zones) {
-            %>
-                <%= zone.getLetter() + " (" + zone.getColor() + ") " %>
-            <%
-                    }
+
+        <%
+            List<Zone> zones = machine.getZones();
+            if (zones != null && !zones.isEmpty()) {
+                String siteName = zones.get(0).getSite().getName();
+        %>
+                <p><strong>Site:</strong> <%= siteName %></p>
+                <p><strong>Zones:</strong></p>
+                <ul>
+        <%
+                for (Zone zone : zones) {
+        %>
+                    <li><%= zone.getLetter() + " (" + zone.getColor() + ")" %></li>
+        <%
                 }
-            %>
-        </p>
+        %>
+                </ul>
+        <%
+            } else {
+                out.println("<p>No zones available.</p>");
+            }
+        %>
 
         <h2>Maintenance History</h2>
         <%
@@ -72,11 +80,11 @@
             if (showReorderButton != null && showReorderButton) {
         %>
             <form action="Purchaser" method="POST">
-	    		<input type="hidden" name="action" value="submitOrder"/>
-	    		<input type="hidden" name="machineId" value="<%= machine.getIdMachine() %>"/>
-	
-	    		<button type="submit" class="btn btn-warning">Re-order Machine</button>
-			</form>
+                <input type="hidden" name="action" value="submitOrder"/>
+                <input type="hidden" name="machineId" value="<%= machine.getIdMachine() %>"/>
+
+                <button type="submit" class="btn btn-warning">Re-order Machine</button>
+            </form>
 
         <%
             }

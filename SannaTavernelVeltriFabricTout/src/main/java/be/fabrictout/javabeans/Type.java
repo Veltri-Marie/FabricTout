@@ -1,4 +1,4 @@
-package be.fabrictout.pojo;
+package be.fabrictout.javabeans;
 
 public enum Type {
 	FABRICATION,

@@ -2,16 +2,18 @@
 <%@ page import="java.util.List" %>
 <%@ page import="be.fabrictout.javabeans.Maintenance" %>
 <%@ page import="be.fabrictout.javabeans.Machine" %>
+<%@ page import="be.fabrictout.javabeans.Status" %>
 
 <html>
 <head>
-    <title>Worker Dashboard</title>
+    <title>Maintenance List</title>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/css/bootstrap.css" />
 </head>
 <body>
-    <div class="container mt-4">
-        <h1 class="mb-4">Welcome to Worker Dashboard</h1>
+    <div class="container">
+        <h1 class="mt-4 mb-4">Maintenance List</h1>
 
+        <!-- Display success or error messages -->
         <%
             String error = (String) request.getAttribute("error");
             String success = (String) request.getAttribute("success");
@@ -26,34 +28,47 @@
             }
         %>
 
-        <h3>Assigned Maintenances</h3>
-        <table class="table table-bordered table-striped">
+        <!-- Display Machine details -->
+        <%
+            Machine machine = (Machine) request.getAttribute("machine");
+            List<Maintenance> maintenances = (List<Maintenance>) request.getAttribute("maintenances");
+            if (machine != null) {
+        %>
+            <h3>Machine: <%= machine.getType() %> (ID: <%= machine.getIdMachine() %>)</h3>
+        <%
+            }
+        %>
+
+        <!-- Table of maintenances -->
+        <table class="table table-striped table-bordered">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Machine</th>
                     <th>Date</th>
+                    <th>Duration</th>
+                    <th>Report</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <%
-                    List<Maintenance> maintenances = (List<Maintenance>) request.getAttribute("maintenances");
                     if (maintenances != null && !maintenances.isEmpty()) {
                         for (Maintenance maintenance : maintenances) {
                 %>
                 <tr>
                     <td><%= maintenance.getIdMaintenance() %></td>
-                    <td><%= maintenance.getMachine().getType() %> (ID: <%= maintenance.getMachine().getIdMachine() %>)</td>
                     <td><%= maintenance.getDate() %></td>
+                    <td><%= maintenance.getDuration() %> hours</td>
+                    <td><%= (maintenance.getReport() != null) ? maintenance.getReport() : "No report available" %></td>
                     <td><%= maintenance.getStatus() %></td>
                     <td>
-                        <% if ("IN_PROGRESS".equals(maintenance.getStatus().toString())) { %>
-                            <form action="Worker" method="get" style="display:inline;">
-                                <input type="hidden" name="action" value="reportCompletedMaintenance" />
+                        <% if ("WAITING".equals(maintenance.getStatus().toString())) { %>
+                            <form action="Manager" method="get" style="display:inline;">
+                                <input type="hidden" name="action" value="validate" />
+                                <input type="hidden" name="idMachine" value="<%= machine.getIdMachine() %>" />
                                 <input type="hidden" name="idMaintenance" value="<%= maintenance.getIdMaintenance() %>" />
-                                <button type="submit" class="btn btn-success btn-sm">Report Completion</button>
+                                <button type="submit" class="btn btn-success btn-sm">Validate</button>
                             </form>
                         <% } %>
                     </td>
@@ -63,13 +78,16 @@
                     } else {
                 %>
                 <tr>
-                    <td colspan="5" class="text-center">No maintenances assigned to you.</td>
+                    <td colspan="6" class="text-center">No maintenances found.</td>
                 </tr>
                 <%
                     }
                 %>
             </tbody>
         </table>
+
+        <!-- Back button -->
+        <a href="Manager" class="btn btn-primary mt-3">Back to Machine List</a>
     </div>
 </body>
 </html>

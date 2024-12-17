@@ -1,16 +1,16 @@
 package be.fabrictout.dao;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import be.fabrictout.pojo.Color;
-import be.fabrictout.pojo.Letter;
-import be.fabrictout.pojo.Machine;
-import be.fabrictout.pojo.Site;
-import be.fabrictout.pojo.State;
-import be.fabrictout.pojo.Type;
-import be.fabrictout.pojo.Zone;
+import be.fabrictout.javabeans.Color;
+import be.fabrictout.javabeans.Letter;
+import be.fabrictout.javabeans.Manager;
+import be.fabrictout.javabeans.Site;
+import be.fabrictout.javabeans.Worker;
+import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
 
 public class SiteDAO extends DAO<Site> {
@@ -19,7 +19,6 @@ public class SiteDAO extends DAO<Site> {
         super(conn);
     }
 
-    @Override
     public int getNextIdDAO() {
         String procedureCall = "{call get_next_site_id(?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
@@ -127,8 +126,9 @@ public class SiteDAO extends DAO<Site> {
     private Site setSiteDAO(ResultSet rs) throws SQLException {
     	System.out.println("SiteDAO : setSiteDAO");
     	Site site = null; 
-    	Zone zone = null;
-    	
+        Zone zone = null;
+        List<Zone> zones = new ArrayList<>();
+                    
         String zoneList = rs.getString("zone_list");
         if (zoneList != null && !zoneList.isEmpty()) {
             int counter = 0;
@@ -150,18 +150,59 @@ public class SiteDAO extends DAO<Site> {
                             rs.getString("site_city")
                         );
                         site = firstZone.getSite();
-
+                        zones.add(firstZone);
                         counter++;
+                        
                     } else {
                         zone = new Zone(
                             zoneId,
                             letter,
                             color, 
                             site);
+                        zones.add(zone);
 
                         if (site != null) {
                             site.addZone(zone); 
                         }
+                    }
+                }
+            }
+        }
+        
+            
+	    Manager manager = new Manager(
+	    		rs.getInt("id_person"), 
+	    		rs.getString("firstName"),
+	    		rs.getString("lastName"),
+	    		rs.getDate("birthDate").toLocalDate(),
+	    		rs.getString("phoneNumber"),
+	    		rs.getString("registrationCode"),
+	    		rs.getString("password"),
+	    		site
+	    		);
+	    site.setManager(manager);
+        
+	    List<Worker> workers = new ArrayList<>();
+	    String workerList = rs.getString("worker_list");
+        if (workerList != null && !workerList.isEmpty()) {
+            String[] workereEntries = workerList.split(",");
+            for (String entry : workereEntries) {
+                String[] parts = entry.split(":");
+                if (parts.length == 5) {
+                    try {
+                        Worker worker = new Worker(
+                            Integer.parseInt(parts[0].trim()), // idPerson
+                            parts[1].trim(), // firstName
+                            parts[2].trim(),	// lastName
+                            LocalDate.parse(parts[3].trim()), // birthDate
+                            parts[4].trim(), // phoneNumber, 
+                            parts[5].trim(), // registrationCode
+                            parts[6].trim(), // password
+                            site
+                        );
+                        site.addWorker(worker);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }

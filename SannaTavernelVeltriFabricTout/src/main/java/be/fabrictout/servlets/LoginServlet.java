@@ -14,8 +14,8 @@ import javax.servlet.http.HttpSession;
 
 import be.fabrictout.connection.FabricToutConnection;
 import be.fabrictout.dao.EmployeeDAO;
-import be.fabrictout.pojo.Employee;
-import be.fabrictout.pojo.Role;
+import be.fabrictout.javabeans.Employee;
+
 
 public class LoginServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
@@ -79,18 +79,25 @@ public class LoginServlet extends HttpServlet {
 
                 HttpSession session = request.getSession();
                 session.setAttribute("idEmployee", idEmployee); 
+                                
 
-                Employee employee = Employee.find(employeeDAO, idEmployee);
+                String employeeType = Employee.findTypeById(employeeDAO, idEmployee);
+                
+                System.out.println("Employee type: " + employeeType);
 
-
-                if (employee.getRole() == Role.ADMIN) {
-                    response.sendRedirect(request.getContextPath() + "/Admin");  
-                } else if (employee.getRole() == Role.WORKER) {
-                    response.sendRedirect(request.getContextPath() + "/Worker"); 
+                if ("Worker".equals(employeeType)) {
+                    response.sendRedirect(request.getContextPath() + "/Worker");
+                } else if ("Purchaser".equals(employeeType)) {
+                    response.sendRedirect(request.getContextPath() + "/Purchaser");
+                } else if ("Manager".equals(employeeType)) {
+                    response.sendRedirect(request.getContextPath() + "/Manager");
                 } else {
-                    response.sendRedirect(request.getContextPath() + "/Manager");  
+                    errors.add("Unknown employee type.");
+                    request.setAttribute("errors", errors);
+                    RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/user/index.jsp");
+                    dispatcher.forward(request, response);
                 }
-
+                
             } else {
                 errors.add("Incorrect username or password.");
                 request.setAttribute("errors", errors);
