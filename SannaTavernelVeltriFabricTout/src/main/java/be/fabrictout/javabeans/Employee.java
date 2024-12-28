@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Objects;
 
+
 import be.fabrictout.dao.EmployeeDAO;
 
 public abstract class Employee extends Person implements Serializable {
@@ -22,16 +23,30 @@ public abstract class Employee extends Person implements Serializable {
     public Employee(int idPerson, String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
                    String registrationCode, String password) {
         super(idPerson, firstName, lastName, birthDate, phoneNumber);
-        this.registrationCode = registrationCode;
-        this.password = password;
+        setRegistrationCode(registrationCode);
+        setPassword(password);
     }
-
+    
+    public Employee(String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
+            String registrationCode, String password) {
+    	this(-1, firstName, lastName, birthDate, phoneNumber, registrationCode, password);
+    }
+    
     // PROPERTIES
     public String getRegistrationCode() {
         return registrationCode;
     }
 
     public void setRegistrationCode(String registrationCode) {
+    	if (registrationCode == null) {
+    		throw new IllegalArgumentException("Registration code cannot be null");
+    	}
+		if (registrationCode.isBlank()) {
+			throw new IllegalArgumentException("Registration code cannot be empty");
+		}
+    	if(registrationCode.length() < 5) {
+    		throw new IllegalArgumentException("Registration code must be at least 5 characters long");
+    	}
         this.registrationCode = registrationCode;
     }
 
@@ -40,6 +55,12 @@ public abstract class Employee extends Person implements Serializable {
     }
 
     public void setPassword(String password) {
+    	if (password == null) {
+    		throw new IllegalArgumentException("Password cannot be null");
+    	}
+    	if (password.isBlank()) {
+    		throw new IllegalArgumentException("Password cannot be empty");
+    	}
         this.password = password;
     }
 
@@ -56,7 +77,7 @@ public abstract class Employee extends Person implements Serializable {
     @Override
     public String toString() {
         return "Employee{" +
-                ", registrationCode='" + registrationCode + '\'' +
+                "registrationCode='" + registrationCode + '\'' +
                 ", password='" + password + '\'' +
                 "} " + super.toString();
     }

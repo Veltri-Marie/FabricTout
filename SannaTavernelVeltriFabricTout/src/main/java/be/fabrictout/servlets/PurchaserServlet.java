@@ -2,17 +2,26 @@ package be.fabrictout.servlets;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import be.fabrictout.connection.FabricToutConnection;
+import be.fabrictout.dao.EmployeeDAO;
 import be.fabrictout.dao.MachineDAO;
+import be.fabrictout.dao.PurchaserDAO;
+import be.fabrictout.javabeans.Employee;
 import be.fabrictout.javabeans.Machine;
+import be.fabrictout.javabeans.Manager;
+import be.fabrictout.javabeans.Purchaser;
 import be.fabrictout.javabeans.State;
 import be.fabrictout.javabeans.Zone;
 
@@ -20,13 +29,20 @@ public class PurchaserServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private Connection conn;
     private MachineDAO machineDAO;
-    private static final double MAX_MACHINE_SIZE = 25.0;
+    private EmployeeDAO employeeDAO;
+    private PurchaserDAO purchaserDAO;
+    private Purchaser currentPurchaser = null;
+    List<String> errors = new ArrayList<String>();
+    List<String> successes = new ArrayList<String>();
+
 
     @Override
     public void init() throws ServletException {
         super.init();
         conn = FabricToutConnection.getInstance();
         machineDAO = new MachineDAO(conn);
+        employeeDAO = new EmployeeDAO(conn);
+        purchaserDAO = new PurchaserDAO(conn);
     }
 
     public PurchaserServlet() {
@@ -36,6 +52,31 @@ public class PurchaserServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
+        
+        HttpSession session = request.getSession();
+        Object idPurchaserObj = session.getAttribute("idEmployee"); 
+
+        errors.add("You must be logged in to access this page.");
+        if (idPurchaserObj == null) {
+            request.setAttribute("errors", errors);
+            forwardToPage(request, response, "/WEB-INF/views/user/index.jsp");
+            return;
+        }
+        
+        else if (!"Purchaser".equals(Employee.findTypeById(employeeDAO, (int) idPurchaserObj))) {
+			errors.add("You must be a purchaser to access this page.");
+			request.setAttribute("errors", errors);
+			forwardToPage(request, response, "/WEB-INF/views/user/index.jsp");
+			return;
+		}
+        
+        int idPurchaser = (int) idPurchaserObj; 
+        
+        currentPurchaser = Purchaser.find(purchaserDAO, idPurchaser);
+        
+        if (currentPurchaser != null) {
+            session.setAttribute("firstName", currentPurchaser.getFirstName());
+        }
 
         if ("viewMachineHistory".equals(action)) {
             viewMachineHistory(request, response);
@@ -44,6 +85,9 @@ public class PurchaserServlet extends HttpServlet {
         } else {
             loadAllMachines(request, response);
         }
+        
+    	errors.clear();
+		successes.clear();
     }
 
     @Override
@@ -53,20 +97,30 @@ public class PurchaserServlet extends HttpServlet {
 
 
     private void loadAllMachines(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    	
         try {
-            List<Machine> machines = Machine.findAll(machineDAO);
+            List<Machine> machines = Machine.findAll(machineDAO); 
+            
+            if (machines != null && !machines.isEmpty()) {
+                Set<Machine> machineSet = new HashSet<>(machines); 
+                machines.clear();
+                machines.addAll(machineSet); 
+
+                machines.sort((m1, m2) -> Integer.compare(m2.getMaintenances().size(), m1.getMaintenances().size()));
+            }
+
             request.setAttribute("machines", machines);
-                      
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineList.jsp");
-            dispatcher.forward(request, response);
+
+            forwardToPage(request, response, "/WEB-INF/views/purchaser/machineList.jsp");
+
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Error loading the machine list.");
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineList.jsp");
-            dispatcher.forward(request, response);
+            errors.add("An error occurred while loading the machine list.");
+            request.setAttribute("errors", errors);
+            forwardToPage(request, response, "/WEB-INF/views/purchaser/machineList.jsp");
         }
     }
+
+
 
     private void viewMachineHistory(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String machineIdParam = request.getParameter("machineId");
@@ -88,9 +142,9 @@ public class PurchaserServlet extends HttpServlet {
                 dispatcher.forward(request, response);
             } catch (Exception e) {
                 e.printStackTrace();
-                request.setAttribute("error", "An error occurred while fetching machine maintenance history.");
-                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
-                dispatcher.forward(request, response);
+                errors.add("An error occurred while fetching machine maintenance history.");
+                request.setAttribute("errors", errors);
+                forwardToPage(request, response, "/WEB-INF/views/purchaser/machineHistory.jsp");
             }
         }
     }    
@@ -102,14 +156,14 @@ public class PurchaserServlet extends HttpServlet {
             try {
                 Machine machine = Machine.find(machineDAO, Integer.parseInt(machineIdParam));
                 if (machine == null) {
-                    request.setAttribute("error", "Machine not found.");
-                    RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
-                    dispatcher.forward(request, response);
+                	errors.add("Machine not found.");
+                    request.setAttribute("errors", errors);
+                    forwardToPage(request, response, "/WEB-INF/views/purchaser/machineHistory.jsp");
                     return;
                 }
 
                 if (machine.getMaintenances() != null && machine.getMaintenances().size() > 6) {
-                    Machine newMachine = new Machine(Machine.getNextId(machineDAO), machine.getType(), machine.getSize(), State.OPERATIONAL, machine.getZones());
+                    Machine newMachine = new Machine(machine.getType(), machine.getSize(), State.OPERATIONAL, machine.getZones());
 
                     for (Zone zone : machine.getZones()) {
                         newMachine.addZone(zone);
@@ -120,29 +174,35 @@ public class PurchaserServlet extends HttpServlet {
                     if (success) {
                     	machine.delete(machineDAO);
 
-                        request.setAttribute("success", "Machine successfully re-ordered.");
-                        response.sendRedirect("Purchaser");
+                    	successes.add("Machine successfully re-ordered.");
+                        request.setAttribute("successes", successes);
+                        loadAllMachines(request, response);
                     } else {
-                        request.setAttribute("error", "Error re-ordering the machine.");
-                        RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
-                        dispatcher.forward(request, response);
+                    	errors.add("Error re-ordering the machine.");
+                        request.setAttribute("errors", errors);
                     }
                 } else {
-                    request.setAttribute("error", "The machine does not have enough maintenance records to qualify for re-order.");
-                    RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
-                    dispatcher.forward(request, response);
+                	errors.add("The machine does not have enough maintenance records to qualify for re-order.");
+                	request.setAttribute("errors", errors);
+                    forwardToPage(request, response, "/WEB-INF/views/purchaser/machineHistory.jsp");
                 }
 
             } catch (Exception e) {
                 e.printStackTrace();
-                request.setAttribute("error", "An error occurred while processing the order.");
-                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
-                dispatcher.forward(request, response);
+                errors.add("An error occurred while processing the order.");
+                request.setAttribute("errors", errors);
+                forwardToPage(request, response, "/WEB-INF/views/purchaser/machineHistory.jsp");
             }
         } else {
-            request.setAttribute("error", "Machine ID is missing.");
-            RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/WEB-INF/views/purchaser/machineHistory.jsp");
-            dispatcher.forward(request, response);
+        	errors.add("Machine ID is missing.");
+            request.setAttribute("errors", errors);
+            forwardToPage(request, response, "/WEB-INF/views/purchaser/machineHistory.jsp");
         }
+    }
+    
+    private void forwardToPage(HttpServletRequest request, HttpServletResponse response, String path)
+            throws ServletException, IOException {
+        RequestDispatcher dispatcher = getServletContext().getRequestDispatcher(path);
+        dispatcher.forward(request, response);
     }
 }

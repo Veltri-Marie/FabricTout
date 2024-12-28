@@ -21,6 +21,11 @@ public class Purchaser extends Employee implements Serializable {
         super(idPerson, firstName, lastName, birthDate, phoneNumber, registrationCode, password);
     }
     
+	public Purchaser(String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
+            String registrationCode, String password) {
+		this(-1, firstName, lastName, birthDate, phoneNumber, registrationCode, password);
+	}
+	
     // METHODS
     public static Purchaser find(PurchaserDAO purchaserDAO, int id) {
         return purchaserDAO.findDAO(id);

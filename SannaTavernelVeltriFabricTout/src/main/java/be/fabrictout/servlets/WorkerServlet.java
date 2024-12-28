@@ -3,7 +3,9 @@ package be.fabrictout.servlets;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -13,12 +15,17 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import be.fabrictout.connection.FabricToutConnection;
+import be.fabrictout.dao.EmployeeDAO;
 import be.fabrictout.dao.MachineDAO;
 import be.fabrictout.dao.MaintenanceDAO;
 import be.fabrictout.dao.WorkerDAO;
+import be.fabrictout.javabeans.Employee;
 import be.fabrictout.javabeans.Maintenance;
+import be.fabrictout.javabeans.Purchaser;
 import be.fabrictout.javabeans.Status;
+import be.fabrictout.javabeans.Type;
 import be.fabrictout.javabeans.Worker;
+
 
 public class WorkerServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
@@ -26,8 +33,10 @@ public class WorkerServlet extends HttpServlet {
     private WorkerDAO workerDAO;
     private MachineDAO machineDAO;
     private MaintenanceDAO maintenanceDAO;
+    private EmployeeDAO employeeDAO = null;
     private Worker currentWorker = null;
-    ArrayList<String> errors = new ArrayList<String>();
+    List<String> errors = new ArrayList<String>();
+    List<String> successes = new ArrayList<String>();
 
 
     @Override
@@ -37,6 +46,7 @@ public class WorkerServlet extends HttpServlet {
         workerDAO = new WorkerDAO(conn);
         machineDAO = new MachineDAO(conn);
         maintenanceDAO = new MaintenanceDAO(conn);
+        employeeDAO = new EmployeeDAO(conn);
     }
 
     public WorkerServlet() {
@@ -47,6 +57,9 @@ public class WorkerServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
     	
+    	errors.clear();
+        successes.clear();
+    	
     	HttpSession session = request.getSession();
         Object idWorkerObj = session.getAttribute("idEmployee"); 
 
@@ -56,10 +69,20 @@ public class WorkerServlet extends HttpServlet {
             forwardToPage(request, response, "/WEB-INF/views/user/index.jsp");
             return;
         }
+        else if (!"Worker".equals(Employee.findTypeById(employeeDAO, (int) idWorkerObj))) {
+			errors.add("You must be a worker to access this page.");
+			request.setAttribute("errors", errors);
+			forwardToPage(request, response, "/WEB-INF/views/user/index.jsp");
+			return;
+		}
 
         int idWorker = (int) idWorkerObj; 
         
         currentWorker = Worker.find(workerDAO, idWorker);
+        
+        if (currentWorker != null) {
+            session.setAttribute("firstName", currentWorker.getFirstName());
+        }
     			
         String action = request.getParameter("action");
 
@@ -74,7 +97,8 @@ public class WorkerServlet extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "An error occurred while processing the request.");
+            errors.add("An error occurred while processing the request.");
+            request.setAttribute("errors", errors);
             forwardToPage(request, response, "/WEB-INF/views/worker/welcome.jsp");
         }
     }
@@ -100,11 +124,19 @@ public class WorkerServlet extends HttpServlet {
                     }
                 }
             }
-            request.setAttribute("maintenances", workerMaintenances);
+            List<Maintenance> sortedMaintenances = workerMaintenances.stream()
+                    .sorted(Comparator
+                            .comparing((Maintenance m) -> !(m.getStatus() == Status.IN_PROGRESS || m.getStatus() == Status.REJECTED))
+                            .thenComparing((Maintenance m) -> m.getStatus() != Status.WAITING)
+                            .thenComparing(Maintenance::getIdMaintenance))
+                    .collect(Collectors.toList());
+
+            request.setAttribute("maintenances", sortedMaintenances);
             forwardToPage(request, response, "/WEB-INF/views/worker/welcome.jsp");
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Error loading the maintenance list.");
+            errors.add("An error occurred while loading the maintenance list.");
+            request.setAttribute("errors", errors);
             forwardToPage(request, response, "/WEB-INF/views/worker/welcome.jsp");
         }
     }
@@ -115,16 +147,19 @@ public class WorkerServlet extends HttpServlet {
             int idMaintenance = Integer.parseInt(request.getParameter("idMaintenance"));
             Maintenance maintenance = Maintenance.find(maintenanceDAO, idMaintenance);
 
-            if (maintenance != null && "IN_PROGRESS".equals(maintenance.getStatus().toString())) {
+            if (maintenance != null && ("IN_PROGRESS".equals(maintenance.getStatus().toString()) ||
+            		"REJECTED".equals(maintenance.getStatus().toString()))) {
                 request.setAttribute("maintenance", maintenance); 
                 forwardToPage(request, response, "/WEB-INF/views/worker/reportCompleteMaintenances.jsp");
             } else {
-                request.setAttribute("error", "Only maintenances in 'IN_PROGRESS' status can be reported.");
+            	errors.add("Only maintenances in 'IN_PROGRESS' OR 'REJECTED' status can be reported.");
+            	request.setAttribute("errors", errors);
                 loadAllMaintenances(request, response);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Error preparing maintenance completion form.");
+            errors.add("Error preparing maintenance completion form.");
+            request.setAttribute("errors", errors);
             loadAllMaintenances(request, response);
         }
     }
@@ -141,23 +176,26 @@ public class WorkerServlet extends HttpServlet {
             
 
             if ( "NEEDS_MAINTENANCE".equals(maintenance.getMachine().getState().toString())
-                    && maintenance != null && "IN_PROGRESS".equals(maintenance.getStatus().toString())) {
+                    && maintenance != null && ("IN_PROGRESS".equals(maintenance.getStatus().toString()) ||
+                    		"REJECTED".equals(maintenance.getStatus().toString()))) {
                 maintenance.setStatus(Status.WAITING); 
                 maintenance.setDuration(duration);
                 maintenance.setReport(report);
                 
                 maintenance.update(maintenanceDAO);
 
-
-                request.setAttribute("success", "Maintenance successfully reported");
+                successes.add("Maintenance successfully reported");
+                request.setAttribute("successes", successes);
             } else {
-                request.setAttribute("error", "Only machines in NEEDS_MAINTENANCE and maintenance in IN_PROGRESS can be reported.");
+            	errors.add("Only maintenances in 'IN_PROGRESS' OR 'REJECTED' status can be reported.");
+            	request.setAttribute("errors", errors);
             }
 
             loadAllMaintenances(request, response);
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Error reporting machine maintenance.");
+            errors.add("Error reporting machine maintenance.");
+            request.setAttribute("errors", errors);
             loadAllMaintenances(request, response);
         }
     }

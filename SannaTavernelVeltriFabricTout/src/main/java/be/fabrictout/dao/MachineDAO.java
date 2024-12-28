@@ -12,9 +12,13 @@ import be.fabrictout.javabeans.Type;
 import be.fabrictout.javabeans.Worker;
 import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.STRUCT;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,43 +29,35 @@ public class MachineDAO extends DAO<Machine> {
 		super(connection);
 		this.connection = connection;
     }
-
-	public int getNextIdDAO() {
-		System.out.println("MachineDAO : getNextIdDAO");
-		String sql = "{CALL get_next_machine_id(?)}";
-		try (CallableStatement stmt = connection.prepareCall(sql)) {
-			stmt.registerOutParameter(1, Types.INTEGER);
-			stmt.execute();
-			return stmt.getInt(1);
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return -1;
-		}
-	}
 	
-    @Override
-    public boolean createDAO(Machine machine) {
-        System.out.println("MachineDAO : createDAO");
-        String sql = "{CALL create_machine(?, ?, ?, ?, ?)}";
-        try (CallableStatement stmt = connection.prepareCall(sql)) {
-            stmt.setInt(1, machine.getIdMachine());
-            stmt.setString(2, machine.getType().toString());
-            stmt.setDouble(3, machine.getSize());
-            stmt.setString(4, machine.getState().toString());
+	@Override
+	public boolean createDAO(Machine machine) {
+	    System.out.println("MachineDAO : createDAO");
+	    String sql = "{CALL create_machine(?, ?, ?, ?, ?)}"; 
+	    try (CallableStatement stmt = connection.prepareCall(sql)) {
+	        stmt.registerOutParameter(1, Types.INTEGER); 
+	        stmt.setString(2, machine.getType().toString());
+	        stmt.setDouble(3, machine.getSize());
+	        stmt.setString(4, machine.getState().toString());
 
-            String zoneIds = String.join(",",
-                    machine.getZones().stream()
-                            .map(zone -> String.valueOf(zone.getZoneId()))
-                            .toArray(String[]::new));
-            stmt.setString(5, zoneIds);
 
-            stmt.execute();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+	        String zoneIds = String.join(",",
+	                machine.getZones().stream()
+	                        .map(zone -> String.valueOf(zone.getZoneId()))
+	                        .toArray(String[]::new));
+	        stmt.setString(5, zoneIds);
+
+	        stmt.execute();
+
+	        int generatedId = stmt.getInt(1);
+	        machine.setIdMachine(generatedId);
+
+	        return true;
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return false;
+	    }
+	}
 
 
     @Override
@@ -105,99 +101,105 @@ public class MachineDAO extends DAO<Machine> {
 
     @Override
     public Machine findDAO(int id) {
-    	System.out.println("MachineDAO : findDAO");
-        String sql = "{CALL find_machine(?, ?)}";
+        System.out.println("MachineDAO : findDAO");
+        String sql = "{CALL find_machine(?, ?)}";  
+        Machine machine = null;
+
         try (CallableStatement stmt = connection.prepareCall(sql)) {
             stmt.setInt(1, id);
-            stmt.registerOutParameter(2, OracleTypes.CURSOR);
+            stmt.registerOutParameter(2, OracleTypes.ARRAY, "MACHINE_TABLE_TYPE"); 
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(2)) {
-                if (rs.next()) {
-                    return setMachineDAO(rs);
+
+            Array array = stmt.getArray(2);
+            if (array != null) {
+                Object[] machineObjects = (Object[]) array.getArray();
+                if (machineObjects.length > 0) {
+                    Object obj = machineObjects[0];
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 16) {
+                            machine = setMachineDAO(attributes);  
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+        return machine;
     }
-
-
 
     @Override
     public List<Machine> findAllDAO() {
-    	System.out.println("MachineDAO : findAllDAO");
-        String sql = "{CALL find_all_machines(?)}";
+        System.out.println("MachineDAO : findAllDAO");
+        String sql = "{CALL find_all_machines(?)}";  
         List<Machine> machines = new ArrayList<>();
+
         try (CallableStatement stmt = connection.prepareCall(sql)) {
-            stmt.registerOutParameter(1, OracleTypes.CURSOR);
+            stmt.registerOutParameter(1, OracleTypes.ARRAY, "MACHINE_TABLE_TYPE");  
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(1)) {
-                while (rs.next()) {
-                    machines.add(setMachineDAO(rs));
+
+            Array array = stmt.getArray(1);
+            if (array != null) {
+                Object[] machineObjects = (Object[]) array.getArray();
+                for (Object obj : machineObjects) {
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 16) {
+                            machines.add(setMachineDAO(attributes));  
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return machines;
+        return machines;  
     }
 
-
-    
-    public boolean addZoneDAO(Machine machine, Zone zone) {
-    	System.out.println("MachineDAO : addZoneDAO");
-        System.out.println("MachineDAO : addZoneDAO");
-        String procedureCall = "{call add_zone_to_machine(?, ?)}";
-        try (CallableStatement stmt = connection.prepareCall(procedureCall)) {
-            stmt.setInt(1, machine.getIdMachine());
-            stmt.setInt(2, zone.getZoneId());
-
-            stmt.execute();
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-
-    private Machine setMachineDAO(ResultSet rs) throws SQLException {
+    private Machine setMachineDAO(Object[] attributes) {
+        System.out.println("MachineDAO : setMachineDAO");
         Machine machine = null;
         Site site = null;
-
         
-        int machineId = rs.getInt("id_machine");
-        Type machineType = Type.valueOf(rs.getString("machine_type"));
-        double machineSize = rs.getDouble("machine_size");
-        State machineState = State.valueOf(rs.getString("machine_state"));
-        
+        int machineId = ((BigDecimal) attributes[0]).intValue(); 
+        Type machineType = Type.valueOf((String) attributes[1]);
+        double machineSize = ((BigDecimal) attributes[2]).doubleValue(); 
+        State machineState = State.valueOf((String) attributes[3]); 
 
+        Timestamp timestamp = (Timestamp) attributes[12]; 
+	    String birthDateStr = timestamp.toLocalDateTime().toLocalDate().toString(); 
+	    LocalDate birthDate = LocalDate.parse(birthDateStr);
+	    
+        // Création du Manager
         Manager manager = new Manager(
-				rs.getInt("manager_id"), 
-				rs.getString("manager_firstName"),
-				rs.getString("manager_lastName"), 
-				LocalDate.parse(rs.getString("manager_birthDate")),
-				rs.getString("manager_phoneNumber"), 
-				rs.getString("manager_registrationCode"),
-				rs.getString("manager_password"), 
-				new Site());
-        
+        		((BigDecimal) attributes[9]).intValue(), // manager_id
+                (String) attributes[10], // manager_firstName
+                (String) attributes[11], // manager_lastName
+                birthDate, // manager_birthDate
+                (String) attributes[13], // manager_phoneNumber
+                (String) attributes[14], // manager_registrationCode
+                (String) attributes[15], // manager_password
+                new Site() // Site
+        );
+
         List<Zone> zones = new ArrayList<>();
-        String zoneList = rs.getString("zone_list");
+        String zoneList = (String) attributes[4]; // zone_list
         if (zoneList != null && !zoneList.isEmpty()) {
             String[] zoneEntries = zoneList.split(",");
             for (String entry : zoneEntries) {
                 String[] parts = entry.split(":");
                 if (parts.length == 3) {
                     Zone zone = new Zone(
-                            Integer.parseInt(parts[0].trim()),
-                            Letter.valueOf(parts[1].trim().toUpperCase()),
-                            Color.valueOf(parts[2].trim().toUpperCase()),
-                            rs.getInt("site_id"),
-                            rs.getString("site_name"),
-                            rs.getString("site_city")
+                            Integer.parseInt(parts[0].trim()), // zone_id
+                            Letter.valueOf(parts[1].trim().toUpperCase()), // letter
+                            Color.valueOf(parts[2].trim().toUpperCase()), // color
+                            ((BigDecimal) attributes[6]).intValue(), // site_id
+                            (String) attributes[7], // site_name
+                            (String) attributes[8] // site_city
                     );
                     zones.add(zone);
                     site = zone.getSite();
@@ -205,33 +207,47 @@ public class MachineDAO extends DAO<Machine> {
                 }
             }
         }
-        
-       
-        machine = new Machine(machineId, machineType, machineSize, machineState,zones);        
-        
-		
 
-        String maintenanceList = rs.getString("maintenance_list");
+        machine = new Machine(machineId, machineType, machineSize, machineState, zones);
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yy");
+
+       
+        String maintenanceList = (String) attributes[5]; 
         if (maintenanceList != null && !maintenanceList.isEmpty()) {
             String[] maintenanceEntries = maintenanceList.split(",");
             for (String entry : maintenanceEntries) {
                 String[] parts = entry.split(":");
                 if (parts.length == 5) {
+                	
+                	String dateMaintenanceStr = parts[1].trim();
+                	LocalDate dateMaintenance = LocalDate.parse(dateMaintenanceStr, formatter);
+                	
+                    
+                    if (dateMaintenance.getYear() > LocalDate.now().getYear()) {
+                        int correctedYear = dateMaintenance.getYear() - 100; 
+                        dateMaintenance = dateMaintenance.withYear(correctedYear);
+                    }
+
                     Maintenance maintenance = new Maintenance(
-                            Integer.parseInt(parts[0].trim()),
-                            LocalDate.parse(parts[1].trim()),
-                            Integer.parseInt(parts[2].trim()),
-                            parts[3].trim(),
-                            Status.valueOf(parts[4].trim()),
-                            machine,
-                            new Manager(),
-                            List.of(new Worker())
+                            Integer.parseInt(parts[0].trim()), // id_maintenance
+                            dateMaintenance, // date_maintenance
+                            Integer.parseInt(parts[2].trim()), // duration
+                            parts[3].trim(), // report
+                            Status.valueOf(parts[4].trim()), // status
+                            machine, // machine
+                            new Manager(), // manager
+                            new ArrayList<>() // workers
                     );
+
                     machine.addMaintenance(maintenance);
                 }
             }
         }
+
+
         return machine;
     }
+
 
 }

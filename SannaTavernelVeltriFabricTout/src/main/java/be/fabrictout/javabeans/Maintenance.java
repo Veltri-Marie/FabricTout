@@ -2,6 +2,7 @@ package be.fabrictout.javabeans;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,20 +33,27 @@ public class Maintenance implements Serializable {
     public Maintenance(int idMaintenance, LocalDate date, int duration, String report, Status status, 
                        Machine machine, Manager manager, List<Worker> workers) {
         this(); 
-        this.idMaintenance = idMaintenance;
-        this.date = date;
-        this.duration = duration;
-        this.report = report;
-        this.status = status;
-        this.machine = machine;
-        this.manager = manager;
-        this.workers = workers;
+        setIdMaintenance(idMaintenance);
+        setDate(date);
+        setDuration(duration);
+        setReport(report);
+        setStatus(status);
+        setMachine(machine);
+        setManager(manager);
+        setWorkers(workers);
+
         for (Worker worker : workers) {
             worker.addMaintenance(this);
         }
         machine.addMaintenance(this);
         manager.addMaintenance(this);
+        
     }
+    
+	public Maintenance(LocalDate date, int duration, String report, Status status, Machine machine, Manager manager, List<Worker> workers) {
+		this(-1, date, duration, report, status, machine, manager, workers);
+	}
+	
 
     // PROPERTIES
     public int getIdMaintenance() {
@@ -53,6 +61,10 @@ public class Maintenance implements Serializable {
     }
 
     public void setIdMaintenance(int idMaintenance) {
+    	String idString = String.valueOf(idMaintenance); 
+	    if (!idString.matches("-?\\d+")) { 
+	        throw new IllegalArgumentException("idMaintenance must be a valid integer.");
+	    }
         this.idMaintenance = idMaintenance;
     }
 
@@ -61,7 +73,15 @@ public class Maintenance implements Serializable {
     }
 
     public void setDate(LocalDate date) {
+		if (date == null) {
+			throw new IllegalArgumentException("date cannot be null");
+		}
+
         this.date = date;
+    }
+    
+    public String getDateAsString() {
+        return date != null ? date.format(DateTimeFormatter.ISO_DATE) : null;
     }
 
     public int getDuration() {
@@ -69,6 +89,14 @@ public class Maintenance implements Serializable {
     }
 
     public void setDuration(int duration) {
+    	String durationString = String.valueOf(duration);
+	    if (!durationString.matches("-?\\d+")) { 
+    		throw new IllegalArgumentException("duration must be a valid integer.");
+        }
+	    if (duration < 0) {
+	    	throw new IllegalArgumentException("duration must be a positive integer.");
+	    }
+	        
         this.duration = duration;
     }
 
@@ -85,6 +113,9 @@ public class Maintenance implements Serializable {
     }
 
     public void setStatus(Status status) {
+		if (status == null) {
+			throw new IllegalArgumentException("status cannot be null");
+		}
         this.status = status;
     }
 
@@ -101,6 +132,10 @@ public class Maintenance implements Serializable {
     }
 
     public void setWorkers(List<Worker> workers) {
+    	if (workers == null) {
+    		throw new IllegalArgumentException("workers cannot be null");
+    	}
+    	
         this.workers = workers;
     }
 
@@ -117,9 +152,6 @@ public class Maintenance implements Serializable {
         return maintenanceDAO.createDAO(this);
     }
 
-    public static int getNextId(MaintenanceDAO maintenanceDAO) {
-        return maintenanceDAO.getNextIdDAO();
-    }
 
     public boolean delete(MaintenanceDAO maintenanceDAO) {
         return maintenanceDAO.deleteDAO(this);

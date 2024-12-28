@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+
 import be.fabrictout.dao.ZoneDAO;
 
 public class Zone implements Serializable {
@@ -27,29 +28,30 @@ public class Zone implements Serializable {
 	
 	public Zone(int zoneId, Letter letter, Color color) {
 		this();
-        this.zoneId = zoneId;
-        this.letter = letter;
-        this.color = color;
+		setZoneId(zoneId);
+		setLetter(letter);
+		setColor(color);
         site.addZone(this);
     }
 	
 	public Zone(int zoneId, Letter letter, Color color, Site site) {
 		this();
-        this.zoneId = zoneId;
-        this.letter = letter;
-        this.color = color;
-        this.site = site;
+		setZoneId(zoneId);
+		setLetter(letter);
+		setColor(color);
+		setSite(site);
         site.addZone(this);
     }
 	
 	public Zone(int zoneId, Letter letter, Color color, int idSite, String name, String city) {
 		this();
-	    this.zoneId = zoneId;
-	    this.letter = letter;
-	    this.color = color;
-        this.site = new Site(idSite, name, city);
-        this.site.addZone(this);
+		setZoneId(zoneId);
+		setLetter(letter);
+		setColor(color);
+		setSite(new Site(idSite, name, city));
+		site.addZone(this);
 	}
+	
 
     // PROPERTIES
     public int getZoneId() {
@@ -95,10 +97,6 @@ public class Zone implements Serializable {
     // METHODS
     public boolean create(ZoneDAO zoneDAO) {
         return zoneDAO.createDAO(this);
-    }
-
-    public static int getNextId(ZoneDAO zoneDAO) {
-        return zoneDAO.getNextIdDAO();
     }
 
     public boolean delete(ZoneDAO zoneDAO) {

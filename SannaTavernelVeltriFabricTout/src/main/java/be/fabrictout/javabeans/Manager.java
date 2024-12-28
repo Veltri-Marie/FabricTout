@@ -29,18 +29,15 @@ public class Manager extends Employee implements Serializable {
 		if (maintenances == null) {
 			maintenances = new ArrayList<>();
 		}
-		
-		this.site = site;
+		setSite(site);
     }
     
-    // METHODS
-    public static Manager find(ManagerDAO managerDAO, int id) {
-        return managerDAO.findDAO(id);
-    }
-    public static List<Manager> findAll(ManagerDAO managerDAO) {
-        return managerDAO.findAllDAO();
-    }
-
+	public Manager(String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
+            String registrationCode, String password, Site site) {
+		this(-1, firstName, lastName, birthDate, phoneNumber, registrationCode, password, site);
+	}
+	   
+   
     // PROPERTIES
     public List<Maintenance> getMaintenances() {
         return maintenances;
@@ -55,10 +52,20 @@ public class Manager extends Employee implements Serializable {
 	}
 	
 	public void setSite(Site site) {
+		if (site == null) {
+			throw new IllegalArgumentException("Site cannot be null");
+		}
 		this.site = site;
 	}
 
-    // METHODS    
+	 // METHODS
+    public static Manager find(ManagerDAO managerDAO, int id) {
+        return managerDAO.findDAO(id);
+    }
+    public static List<Manager> findAll(ManagerDAO managerDAO) {
+        return managerDAO.findAllDAO();
+    }
+    
     public void addMaintenance(Maintenance maintenance) {
         if (maintenances == null) {
             maintenances = new ArrayList<>();

@@ -2,9 +2,9 @@ package be.fabrictout.javabeans;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-import be.fabrictout.dao.PersonDAO;
 
 public abstract class Person implements Serializable {
 
@@ -21,12 +21,17 @@ public abstract class Person implements Serializable {
     public Person() {}
 
     public Person(int idPerson, String firstName, String lastName, LocalDate birthDate, String phoneNumber) {
-    	this.idPerson = idPerson;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.birthDate = birthDate;
-        this.phoneNumber = phoneNumber;
+    	setIdPerson(idPerson);
+    	setFirstName(firstName);
+    	setLastName(lastName);
+    	setBirthDate(birthDate);
+    	setPhoneNumber(phoneNumber);
     }
+    
+	public Person(String firstName, String lastName, LocalDate birthDate, String phoneNumber) {
+		this(-1, firstName, lastName, birthDate, phoneNumber);
+	}
+	
 
     // PROPERTIES
 	public int getIdPerson() {
@@ -34,14 +39,34 @@ public abstract class Person implements Serializable {
 	}
 	
 	public void setIdPerson(int idPerson) {
-		this.idPerson = idPerson;
+	    String idString = String.valueOf(idPerson); 
+	    if (!idString.matches("-?\\d+")) { 
+	        throw new IllegalArgumentException("idPerson must be a valid integer.");
+	    }
+	    this.idPerson = idPerson;
 	}
-	
+
     public String getFirstName() {
         return firstName;
     }
 
     public void setFirstName(String firstName) {
+    	if (firstName == null)
+    	{
+			throw new IllegalArgumentException("firstName cannot be null.");
+		}
+		if (firstName.isEmpty()) {
+			throw new IllegalArgumentException("firstName cannot be empty.");
+    	}
+		if (firstName.isBlank()) {
+			throw new IllegalArgumentException("firstName cannot be blank.");
+		}
+		if (firstName.length() > 50) {
+			throw new IllegalArgumentException("firstName cannot be longer than 50 characters.");
+		}
+		if (!firstName.matches("[a-zA-Z]+")) {
+			throw new IllegalArgumentException("firstName must contain only letters.");
+		}
         this.firstName = firstName;
     }
 
@@ -50,6 +75,21 @@ public abstract class Person implements Serializable {
     }
 
     public void setLastName(String lastName) {
+    	if (lastName == null){
+            throw new IllegalArgumentException("lastName cannot be null.");
+    	}
+        if (lastName.isEmpty()) {
+            throw new IllegalArgumentException("lastName cannot be empty.");           
+        }
+		if (lastName.isBlank()) {
+			throw new IllegalArgumentException("lastName cannot be blank.");
+		}
+		if (lastName.length() > 50) {
+			throw new IllegalArgumentException("lastName cannot be longer than 50 characters.");
+		}
+		if (!lastName.matches("[a-zA-Z]+")) {
+			throw new IllegalArgumentException("lastName must contain only letters.");
+		}
         this.lastName = lastName;
     }
 
@@ -58,26 +98,50 @@ public abstract class Person implements Serializable {
     }
 
     public void setBirthDate(LocalDate birthDate) {
+    	if (birthDate == null) {
+            throw new IllegalArgumentException("birthDate cannot be null.");
+        }
+        if (birthDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("birthDate cannot be in the future.");
+        }
         this.birthDate = birthDate;
     }
 
+    public String getBirthDateAsString() {
+        return birthDate != null ? birthDate.format(DateTimeFormatter.ISO_DATE) : null;
+    }
+    
     public String getPhoneNumber() {
         return phoneNumber;
     }
 
     public void setPhoneNumber(String phoneNumber) {
+		if (phoneNumber == null) {
+			throw new IllegalArgumentException("phoneNumber cannot be null.");
+		}
+		if (phoneNumber.isEmpty()) {
+			throw new IllegalArgumentException("phoneNumber cannot be empty.");
+		}
+		if (phoneNumber.isBlank()) {
+			throw new IllegalArgumentException("phoneNumber cannot be blank.");
+		}
+		if (phoneNumber.length() > 20) {
+			throw new IllegalArgumentException("phoneNumber cannot be longer than 20 characters.");
+		}
+		if (!phoneNumber.matches("^\\+?[0-9\\-\\s]{10,15}$")) {
+            throw new IllegalArgumentException("phoneNumber must be a valid format (10-15 digits, optional +, "
+            		+ "spaces, or hyphens).");
+        }
         this.phoneNumber = phoneNumber;
     }
 
     // METHODS    
-    public static int getNextId(PersonDAO personDAO) {
-        return personDAO.getNextIdDAO();
-    }
     
     @Override
     public String toString() {
         return "Person{" +
-                "firstName='" + firstName + '\'' +
+        		"idPerson=" + idPerson + '\'' +
+        		"firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", birthDate=" + birthDate +
                 ", phoneNumber='" + phoneNumber + '\'' +

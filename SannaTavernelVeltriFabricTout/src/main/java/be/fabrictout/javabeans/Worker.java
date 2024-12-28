@@ -29,10 +29,15 @@ public class Worker extends Employee implements Serializable {
 		if (maintenances == null) {
 			maintenances = new ArrayList<>();
 		}
-        this.site = site;
+		setSite(site);
     }
     
-    // METHODS
+	public Worker(String firstName, String lastName, LocalDate birthDate, String phoneNumber, 
+            String registrationCode, String password, Site site) {
+		this(-1, firstName, lastName, birthDate, phoneNumber, registrationCode, password, site);
+	}
+	
+    // METHODS	
     public static Worker find(WorkerDAO workerDAO, int id) {
         return workerDAO.findDAO(id);
     }
@@ -54,6 +59,9 @@ public class Worker extends Employee implements Serializable {
     }
 
     public void setSite(Site site) {
+    	if (site == null) {
+            throw new IllegalArgumentException("site cannot be null");
+    	}
         this.site = site;
     }
 

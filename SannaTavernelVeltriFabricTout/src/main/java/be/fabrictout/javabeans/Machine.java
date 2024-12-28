@@ -1,9 +1,11 @@
 package be.fabrictout.javabeans;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
 
 import be.fabrictout.dao.MachineDAO;
 
@@ -31,16 +33,20 @@ public class Machine implements Serializable {
 
     public Machine(int idMachine, Type type, double size, State state, List<Zone> zones) {
         this();  
-        this.idMachine = idMachine;
-        this.type = type;
-        this.size = size;
-        this.state = state;
-        if (zones == null) throw new IllegalArgumentException("zones cannot be null");
-        this.zones = zones;
+        setIdMachine(idMachine);
+        setType(type);
+        setSize(size);
+        setState(state);	
+        setZones(zones);
 		for (Zone zone : zones) {
 			zone.addMachine(this);
 		}
     }
+    
+    
+	public Machine(Type type, double size, State state, List<Zone> zones) {
+		this(-1, type, size, state, zones);
+	}
 
     // PROPERTIES
     public int getIdMachine() {
@@ -48,6 +54,10 @@ public class Machine implements Serializable {
     }
 
     public void setIdMachine(int idMachine) {
+    	String idString = String.valueOf(idMachine); 
+	    if (!idString.matches("-?\\d+")) { 
+	        throw new IllegalArgumentException("idMachine must be a valid integer.");
+	    }
         this.idMachine = idMachine;
     }
 
@@ -56,6 +66,9 @@ public class Machine implements Serializable {
     }
 
     public void setType(Type type) {
+    	if (type == null) {
+            throw new IllegalArgumentException("type cannot be null");
+    	}  	
         this.type = type;
     }
 
@@ -64,6 +77,13 @@ public class Machine implements Serializable {
     }
 
     public void setSize(double size) {
+    	if (size <= 0) {
+            throw new IllegalArgumentException("size must be greater than 0");
+    	}
+    	if (size > 100) {
+            throw new IllegalArgumentException("size must be less than 100");
+    	}
+    	
         this.size = size;
     }
 
@@ -72,6 +92,9 @@ public class Machine implements Serializable {
     }
 
     public void setState(State state) {
+    	if (state == null) {
+            throw new IllegalArgumentException("state cannot be null");
+    	}
         this.state = state;
     }
 
@@ -80,6 +103,12 @@ public class Machine implements Serializable {
     }
 
     public void setMaintenances(List<Maintenance> maintenances) {
+    	if (maintenances == null) {
+            throw new IllegalArgumentException("maintenances cannot be null");
+    	}
+    	if (maintenances.isEmpty()) {
+            throw new IllegalArgumentException("maintenances cannot be empty");
+    	}
         this.maintenances = maintenances;
     }
 
@@ -88,6 +117,7 @@ public class Machine implements Serializable {
     }
 
     public void setZones(List<Zone> zones) {
+
         this.zones = zones;
     }
 
@@ -96,9 +126,6 @@ public class Machine implements Serializable {
         return machineDAO.createDAO(this);
     }
 
-    public static int getNextId(MachineDAO machineDAO) {
-        return machineDAO.getNextIdDAO();
-    }
 
     public boolean delete(MachineDAO machineDAO) {
         return machineDAO.deleteDAO(this);

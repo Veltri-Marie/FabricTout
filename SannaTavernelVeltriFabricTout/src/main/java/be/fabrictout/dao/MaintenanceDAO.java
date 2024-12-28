@@ -1,12 +1,18 @@
 package be.fabrictout.dao;
 
+import java.math.BigDecimal;
+import java.sql.Array;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import be.fabrictout.javabeans.Color;
@@ -21,6 +27,7 @@ import be.fabrictout.javabeans.Type;
 import be.fabrictout.javabeans.Worker;
 import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.STRUCT;
 
 public class MaintenanceDAO extends DAO<Maintenance> {
 
@@ -28,26 +35,14 @@ public class MaintenanceDAO extends DAO<Maintenance> {
         super(conn);
     }
 
-    public int getNextIdDAO() {
-    	System.out.println("MaintenanceDAO : getNextIdDAO");
-        String procedureCall = "{call get_next_maintenance_id(?)}";
-        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.registerOutParameter(1, OracleTypes.INTEGER);
-            stmt.execute();
-            return stmt.getInt(1);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return -1;
-    }
-
     @Override
     public boolean createDAO(Maintenance maintenance) {
         System.out.println("MaintenanceDAO : createDAO");
-        String procedureCall = "{call add_maintenance(?, ?, ?, ?, ?, ?, ?, ?)}"; // 8 paramètres
+        String procedureCall = "{call add_maintenance(?, ?, ?, ?, ?, ?, ?, ?)}"; 
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-          
-            stmt.setInt(1, maintenance.getIdMaintenance());
+
+            stmt.registerOutParameter(1, Types.INTEGER);
+
             stmt.setDate(2, Date.valueOf(maintenance.getDate()));
             stmt.setInt(3, maintenance.getDuration());
             stmt.setString(4, maintenance.getReport());
@@ -63,6 +58,10 @@ public class MaintenanceDAO extends DAO<Maintenance> {
             stmt.setString(8, workerIds); 
 
             stmt.execute();
+
+            int generatedId = stmt.getInt(1);
+            maintenance.setIdMaintenance(generatedId);
+
             return true;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -92,7 +91,6 @@ public class MaintenanceDAO extends DAO<Maintenance> {
         String procedureCall = "{call update_maintenance(?, ?, ?, ?, ?, ?, ?, ?)}"; // 8 paramètres
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
 
-            // Paramètres de la maintenance
             stmt.setInt(1, maintenance.getIdMaintenance());
             stmt.setDate(2, Date.valueOf(maintenance.getDate()));
             stmt.setInt(3, maintenance.getDuration());
@@ -120,36 +118,60 @@ public class MaintenanceDAO extends DAO<Maintenance> {
 
     @Override
     public Maintenance findDAO(int id) {
-    	System.out.println("MaintenanceDAO : findDAO");
-        String procedureCall = "{call find_maintenance(?, ?)}";
+        System.out.println("MaintenanceDAO : findDAO");
+        String procedureCall = "{call find_maintenance(?, ?)}";  
+        Maintenance maintenance = null;
+
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.setInt(1, id);
-            stmt.registerOutParameter(2, OracleTypes.CURSOR);
+            stmt.setInt(1, id);  
+            stmt.registerOutParameter(2, OracleTypes.ARRAY, "MAINTENANCE_TABLE_TYPE");
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(2)) {
-                if (rs.next()) {
-                    return setMaintenanceDAO(rs);
+
+            Array array = stmt.getArray(2); 
+            if (array != null) {
+                Object[] maintenanceObjects = (Object[]) array.getArray();
+                if (maintenanceObjects.length > 0) {
+                    Object obj = maintenanceObjects[0];
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 17) {
+                            maintenance = setMaintenanceDAO(attributes);  
+                        }
+                    }
                 }
+            } else {
+                System.out.println("Aucune donnée récupérée dans la collection.");
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+        return maintenance;
     }
 
     @Override
     public List<Maintenance> findAllDAO() {
-    	System.out.println("MaintenanceDAO : findAllDAO");
+        System.out.println("MaintenanceDAO : findAllDAO");
         String procedureCall = "{call find_all_maintenances(?)}";
         List<Maintenance> maintenances = new ArrayList<>();
+        
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.registerOutParameter(1, OracleTypes.CURSOR);
+            stmt.registerOutParameter(1, OracleTypes.ARRAY, "MAINTENANCE_TABLE_TYPE");
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(1)) {
-                while (rs.next()) {
-                    maintenances.add(setMaintenanceDAO(rs));
+
+            Array array = stmt.getArray(1); 
+            if (array != null) {
+                Object[] maintenanceObjects = (Object[]) array.getArray(); 
+                for (Object obj : maintenanceObjects) {
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 17) {
+                            maintenances.add(setMaintenanceDAO(attributes)); 
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -157,51 +179,70 @@ public class MaintenanceDAO extends DAO<Maintenance> {
         }
         return maintenances;
     }
-    
-    private Maintenance setMaintenanceDAO(ResultSet rs) throws SQLException {
-        System.out.println("MaintenanceDAO : setMaintenanceDAO");
+
+
+    private Maintenance setMaintenanceDAO(Object[] attributes) throws SQLException {
+        System.out.println("SetMaintenanceDAO");
         Maintenance maintenance = null;
 
-        int maintenanceId = rs.getInt("id_maintenance");
-        LocalDate maintenanceDate = LocalDate.parse(rs.getString("maintenance_date"));
-        int duration = rs.getInt("maintenance_duration");
-        String report = rs.getString("maintenance_report");
-        Status status = Status.valueOf(rs.getString("maintenance_status"));
+        Timestamp timestamp = (Timestamp) attributes[1]; 
+	    String maintenanceDatestr = timestamp.toLocalDateTime().toLocalDate().toString(); 
+	    LocalDate maintenanceDate = LocalDate.parse(maintenanceDatestr);
+	    
+        int maintenanceId = ((BigDecimal) attributes[0]).intValue();
+        int duration = ((BigDecimal) attributes[2]).intValue();
+        String report = (String) attributes[3];
+        Status status = Status.valueOf((String) attributes[4]);
 
         Machine machine = new Machine(
-            rs.getInt("machine_id"), 
-            Type.valueOf(rs.getString("machine_type")), 
-            rs.getDouble("machine_size"), 
-            State.valueOf(rs.getString("machine_state")), 
-            new ArrayList<>() 
+            ((BigDecimal) attributes[5]).intValue(),
+            Type.valueOf((String) attributes[6]),
+            ((BigDecimal) attributes[7]).doubleValue(),
+            State.valueOf((String) attributes[8]),
+            new ArrayList<>()
         );
 
+        Timestamp timestamp1 = (Timestamp) attributes[13]; 
+	    String birthDateStr = timestamp1.toLocalDateTime().toLocalDate().toString(); 
+	    LocalDate birthDate = LocalDate.parse(birthDateStr);
+	    
         Manager manager = new Manager(
-            rs.getInt("manager_id"), // id_person
-            rs.getString("manager_firstName"), // firstName
-            rs.getString("manager_lastName"), // lastName
-            LocalDate.parse(rs.getString("manager_birthDate")), // birthDate
-            rs.getString("manager_phoneNumber"), // phoneNumber
-            rs.getString("manager_registrationCode"), // registration
-            rs.getString("manager_password"), // password
-            new Site() // site
+            ((BigDecimal) attributes[10]).intValue(),
+            (String) attributes[11],
+            (String) attributes[12],
+            birthDate,
+            (String) attributes[14],
+            (String) attributes[15],
+            (String) attributes[16],
+            new Site()
         );
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yy");
+
 
         List<Worker> workers = new ArrayList<>();
-        String workerList = rs.getString("worker_list");
+        String workerList = (String) attributes[9];
         if (workerList != null && !workerList.isEmpty()) {
             String[] workerDetails = workerList.split(",");
             for (String details : workerDetails) {
                 String[] parts = details.split(":");
+
+                LocalDate workerBirthDate = LocalDate.parse(parts[3], formatter);
+                
+                if (workerBirthDate.getYear() > LocalDate.now().getYear()) {
+                    int correctedYear = workerBirthDate.getYear() - 100; 
+                    workerBirthDate = workerBirthDate.withYear(correctedYear);
+                }
+            	
                 Worker worker = new Worker(
-                    Integer.parseInt(parts[0]),        // id_person
-                    parts[1],                          // firstName
-                    parts[2],                          // lastName
-                    LocalDate.parse(parts[3]),         // birthDate
-                    parts[4],                          // phoneNumber
-                    parts[5],                          // registrationCode
-                    parts[6],                          // password
-            		new Site()						   // site
+                    Integer.parseInt(parts[0]),
+                    parts[1],
+                    parts[2],
+                    workerBirthDate,
+                    parts[4],
+                    parts[5],
+                    parts[6],
+                    new Site()
                 );
                 workers.add(worker);
             }
@@ -217,7 +258,9 @@ public class MaintenanceDAO extends DAO<Maintenance> {
             manager,
             workers
         );
+
         return maintenance;
     }
+
 
 }

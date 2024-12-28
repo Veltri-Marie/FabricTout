@@ -12,7 +12,9 @@ import be.fabrictout.javabeans.Type;
 import be.fabrictout.javabeans.Worker;
 import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.STRUCT;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -83,100 +85,112 @@ public class ManagerDAO extends DAO<Manager> {
     @Override
     public Manager findDAO(int id) {
         System.out.println("ManagerDAO : findDAO");
-        String sql = "{CALL find_manager(?, ?)}"; 
-        try (CallableStatement stmt = connection.prepareCall(sql)) {
+        String procedureCall = "{call find_manager(?, ?)}"; 
+        Manager manager = null;
+
+        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
             stmt.setInt(1, id); 
-            stmt.registerOutParameter(2, OracleTypes.CURSOR); 
+            stmt.registerOutParameter(2, OracleTypes.ARRAY, "MANAGER_TABLE_TYPE"); 
 
             stmt.execute();
 
-            try (ResultSet rs = (ResultSet) stmt.getObject(2)) { 
-                if (rs.next()) {
-                    return setManager(rs);
+            Array array = stmt.getArray(2); 
+            if (array != null) {
+                Object[] managerObjects = (Object[]) array.getArray();
+                if (managerObjects.length > 0) {
+                    Object obj = managerObjects[0];
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        System.out.println("Nombre d'attributs : " + attributes.length);
+                        for (int i = 0; i < attributes.length; i++) {
+                            System.out.println("Attribut " + i + ": " + attributes[i] + " (Type: " + attributes[i].getClass().getName() + ")");
+                        }
+                        if (attributes != null && attributes.length == 11) {
+                            manager = setManager(attributes);  
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+        return manager;
     }
-
-    
-
 
     @Override
     public List<Manager> findAllDAO() {
-    	System.out.println("ManagerDAO : findAllDAO");
-        String sql = "{CALL find_all_managers()}";
+        System.out.println("ManagerDAO : findAllDAO");
+        String procedureCall = "{call find_all_managers(?)}";
         List<Manager> managers = new ArrayList<>();
-        try (CallableStatement stmt = connection.prepareCall(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                Manager manager = setManager(rs);
-                managers.add(manager);
+
+        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
+            stmt.registerOutParameter(1, OracleTypes.ARRAY, "MANAGER_TABLE_TYPE");  
+
+            stmt.execute();
+
+            Array array = stmt.getArray(1); 
+            if (array != null) {
+                Object[] managerObjects = (Object[]) array.getArray(); 
+                for (Object obj : managerObjects) {
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 11) {
+                            managers.add(setManager(attributes)); 
+                        }
+                    }
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return managers;
     }
-    
-    public Manager setManager(ResultSet rs) throws SQLException {
-    	System.out.println("ManagerDAO : setManager");
-    	
-    	Site site = null;
 
-    	
+    
+    public Manager setManager(Object[] attributes) {
+        System.out.println("ManagerDAO : setManager");
+
+        Site site = null;
         List<Zone> zones = new ArrayList<>();
-        String zoneList = rs.getString("zone_list");
+
+        String zoneList = (String) attributes[10];
         if (zoneList != null && !zoneList.isEmpty()) {
             String[] zoneEntries = zoneList.split(",");
             for (String entry : zoneEntries) {
                 String[] parts = entry.split(":");
                 if (parts.length == 3) {
-                	System.out.println("idZone :" + Integer.parseInt(parts[0].trim()));
-                	System.out.println("letter :" + Letter.valueOf(parts[1].trim().toUpperCase()));
-                	System.out.println("color :" + Color.valueOf(parts[2].trim().toUpperCase()));
-                	System.out.println("site_id :" + rs.getInt("site_id"));
-                	System.out.println("site_name :" + rs.getString("site_name"));
-                	System.out.println("site_city :" + rs.getString("site_city"));
-                	
-                    Zone zone = new Zone(                           	
+                    Zone zone = new Zone(
                             Integer.parseInt(parts[0].trim()), // idZone
                             Letter.valueOf(parts[1].trim().toUpperCase()), // letter
                             Color.valueOf(parts[2].trim().toUpperCase()), // color
-                            rs.getInt("site_id"),
-                            rs.getString("site_name"),
-                            rs.getString("site_city")
+                            ((BigDecimal) attributes[7]).intValue(), // site_id
+                            (String) attributes[8], // site_name
+                            (String) attributes[9]  // site_city
                     );
                     zones.add(zone);
-                    site = zone.getSite();
-                    
+                    site = zone.getSite(); 
                 }
             }
         }
         
-        System.out.println("id_person :" + rs.getInt("id_person"));
-        System.out.println("firstName :" + rs.getString("firstName"));
-        System.out.println("lastName :" + rs.getString("lastName"));
-        System.out.println("birthDate :" + rs.getDate("birthDate").toLocalDate());
-        System.out.println("phoneNumber :" + rs.getString("phoneNumber"));
-        System.out.println("registrationCode :" + rs.getString("registrationCode"));
-        System.out.println("password :" + rs.getString("password"));
-        System.out.println("site :" + site);
-    	
+        Timestamp timestamp1 = (Timestamp) attributes[3]; 
+	    String birthDateStr = timestamp1.toLocalDateTime().toLocalDate().toString(); 
+	    LocalDate birthDate = LocalDate.parse(birthDateStr);
+
         Manager manager = new Manager(
-        		rs.getInt("id_person"), 
-        		rs.getString("firstName"),
-        		rs.getString("lastName"),
-        		rs.getDate("birthDate").toLocalDate(),
-        		rs.getString("phoneNumber"),
-        		rs.getString("registrationCode"),
-        		rs.getString("password"),
-        		site
-        		);
-    	      
-        
-        return manager;	        
+        		((BigDecimal) attributes[0]).intValue(), // id_person
+                (String) attributes[1], // firstName
+                (String) attributes[2], // lastName
+                birthDate, // birthDate
+                (String) attributes[4], // phoneNumber
+                (String) attributes[5], // registrationCode
+                (String) attributes[6], // password
+                site
+        );
+
+        return manager;
     }
+
 }

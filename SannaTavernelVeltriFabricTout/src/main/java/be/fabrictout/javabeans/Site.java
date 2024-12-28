@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+
 import be.fabrictout.dao.SiteDAO;
 
 public class Site implements Serializable {
@@ -32,16 +33,25 @@ public class Site implements Serializable {
 
     public Site(int idSite, String name, String city) {
     	this();
-		this.idSite = idSite;
-		this.name = name;
-		this.city = city;		
+    	setIdSite(idSite);
+        setName(name);
+        setCity(city);		
+	}
+    
+	public Site(String name, String city) {
+		this(-1, name, city);
 	}
     
     public Site(int idSite, String name, String city, List<Zone> zones) {
     	this(idSite, name, city);
-        if (zones == null) throw new IllegalArgumentException("zones cannot be null");
-        this.zones = zones;
+    	setZones(zones);
     }
+    
+    public Site(String name, String city, List<Zone> zones) {
+		this(-1, name, city);
+		
+	}
+    
 
     // PROPERTIES
     public int getIdSite() {
@@ -49,6 +59,10 @@ public class Site implements Serializable {
     }
 
     public void setIdSite(int idSite) {
+    	String idString = String.valueOf(idSite); 
+	    if (!idString.matches("-?\\d+")) { 
+	        throw new IllegalArgumentException("idSite must be a valid integer.");
+	    }
         this.idSite = idSite;
     }
 
@@ -57,6 +71,16 @@ public class Site implements Serializable {
     }
 
     public void setName(String name) {
+    	if (name == null)
+    		throw new IllegalArgumentException("name cannot be null");
+		if (name.isBlank())
+			throw new IllegalArgumentException("name cannot be blank");
+    	if (name.isEmpty())
+    		throw new IllegalArgumentException("name cannot be empty");
+    	if (name.length() > 50)
+    		throw new IllegalArgumentException("name cannot be longer than 50 characters");
+        if (!name.matches("[a-zA-Z0-9 ]+"))
+    		throw new IllegalArgumentException("name must contain only letters and numbers");
         this.name = name;
     }
 
@@ -65,6 +89,18 @@ public class Site implements Serializable {
     }
 
     public void setCity(String city) {
+    	if (city == null)
+    		throw new IllegalArgumentException("city cannot be null");
+        if (city.isBlank())
+    		throw new IllegalArgumentException("city cannot be blank");
+        if (city.isEmpty())
+    		throw new IllegalArgumentException("city cannot be empty");
+		if (city.length() > 50)
+			throw new IllegalArgumentException("city cannot be longer than 50 characters");
+		if (!city.matches("[a-zA-Z\\s]+")) { // Permet aussi les espaces
+		    throw new IllegalArgumentException("City must contain only letters and spaces.");
+		}
+									
         this.city = city;
     }
 
@@ -73,6 +109,8 @@ public class Site implements Serializable {
     }
 
     public void setZones(List<Zone> zones) {
+        if (zones == null)
+        	throw new IllegalArgumentException("zones cannot be null");
         this.zones = zones;
     }
 
@@ -96,10 +134,6 @@ public class Site implements Serializable {
     // METHODS
     public boolean create(SiteDAO siteDAO) {
         return siteDAO.createDAO(this);
-    }
-
-    public static int getNextId(SiteDAO siteDAO) {
-        return siteDAO.getNextIdDAO();
     }
 
     public boolean delete(SiteDAO siteDAO) {

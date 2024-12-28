@@ -1,10 +1,13 @@
 package be.fabrictout.dao;
 
+import java.math.BigDecimal;
+import java.sql.Array;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,6 +25,7 @@ import be.fabrictout.javabeans.Type;
 import be.fabrictout.javabeans.Worker;
 import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.STRUCT;
 
 public class WorkerDAO extends DAO<Worker> {
 	
@@ -32,7 +36,7 @@ public class WorkerDAO extends DAO<Worker> {
 		this.connection = connection;
 	}
 	
-    @Override
+	@Override
     public boolean createDAO(Worker worker) {
     	System.out.println("WorkerDAO : createDAO");
         String sql = "{CALL create_worker(?, ?, ?, ?, ?, ?, ?, ?)}";
@@ -53,6 +57,7 @@ public class WorkerDAO extends DAO<Worker> {
             return false;
         }
     }
+
 
     @Override
     public boolean updateDAO(Worker worker) {
@@ -90,91 +95,126 @@ public class WorkerDAO extends DAO<Worker> {
 
     @Override
     public Worker findDAO(int id) {
-    	System.out.println("WorkerDAO : findDAO");
-        String sql = "{CALL find_worker(?, ?)}";
+        System.out.println("WorkerDAO : findDAO");
+        String sql = "{CALL find_worker(?, ?)}"; 
+        Worker worker = null;
+
         try (CallableStatement stmt = connection.prepareCall(sql)) {
             stmt.setInt(1, id);
-            stmt.registerOutParameter(2, OracleTypes.CURSOR);
+            stmt.registerOutParameter(2, OracleTypes.ARRAY, "WORKER_TABLE_TYPE");
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(2)) {
-                if (rs.next()) {
-                    return setWorker(rs);
+
+            Array array = stmt.getArray(2);
+            if (array != null) {
+                Object[] workerObjects = (Object[]) array.getArray();
+
+                if (workerObjects.length > 0) {
+                    Object obj = workerObjects[0];
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 11) {
+                            worker = setWorker(attributes);  
+                        }
+                    }
                 }
+            } else {
+                System.out.println("No worker found with ID: " + id);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+        return worker;  
     }
 
     @Override
     public List<Worker> findAllDAO() {
-    	System.out.println("WorkerDAO : findAllDAO");
-        String sql = "{CALL find_all_workers(?)}";
+        System.out.println("WorkerDAO : findAllWorkers");
+        String sql = "{CALL find_all_workers(?)}";  
         List<Worker> workers = new ArrayList<>();
-        try (CallableStatement stmt = connection.prepareCall(sql)) {
-            stmt.registerOutParameter(1, OracleTypes.CURSOR);
 
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
+            stmt.registerOutParameter(1, OracleTypes.ARRAY, "WORKER_TABLE_TYPE"); 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(1)) {
-                while (rs.next()) {
-                    workers.add(setWorker(rs));
+
+            Array array = stmt.getArray(1);
+            System.out.println("Array : " + array);
+
+            if (array != null) {
+                Object[] workerObjects = (Object[]) array.getArray();
+                System.out.println("workerObjects : " + workerObjects);
+
+                for (Object obj : workerObjects) {
+                    System.out.println("Obj : " + obj);
+
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+
+                        Object[] attributes = struct.getAttributes();  
+
+                        if (attributes != null && attributes.length == 11) {
+
+                            Worker worker = setWorker(attributes);  
+                            workers.add(worker);  
+                        }
+                    } else {
+                        System.out.println("Unexpected object type: " + obj.getClass().getName());
+                    }
                 }
+            } else {
+                System.out.println("No workers found in the array.");
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return workers;
     }
+
     
-	public Worker setWorker(ResultSet rs) throws SQLException {
-		System.out.println("WorkerDAO : setWorker");
-		Site site = null;
-		
-        String zoneList = rs.getString("zone_list");
-        if (zoneList != null && !zoneList.isEmpty()) {
-        	System.out.println("ZoneList : " + zoneList);
-            String[] zoneEntries = zoneList.split(",");
-            for (String entry : zoneEntries) {
-                String[] parts = entry.split(":");
-                if (parts.length == 3) {
-                	System.out.println("id : " + parts[0].trim());
-                	System.out.println("letter : " + parts[1].trim());
-                	System.out.println("color : " + parts[2].trim());
-                	System.out.println("site_id : " + rs.getInt("site_id"));
-                	System.out.println("site_name : " + rs.getString("site_name"));
-                	System.out.println("site_city : " + rs.getString("site_city"));
-                	
-                    Zone zone = new Zone(
-                            Integer.parseInt(parts[0].trim()), // idZone
-                            Letter.valueOf(parts[1].trim().toUpperCase()), // letter
-                            Color.valueOf(parts[2].trim().toUpperCase()), // color
-                            rs.getInt("site_id"), // Alias explicit de id_site
-		                    rs.getString("site_name"),
-		                    rs.getString("site_city"));
-                    
-                    System.out.println("Zone : " + zone);
-                    site = zone.getSite();
-                    System.out.println("Site : " + site);
-                    
-                }
-            }
-        }
-        
-		Worker worker = new Worker(
-				rs.getInt("id_person"),
-				rs.getString("firstName"), 
-				rs.getString("lastName"),
-				rs.getDate("birthDate").toLocalDate(), 
-				rs.getString("phoneNumber"), 
-				rs.getString("registrationCode"),
-				rs.getString("password"), 
-				site
-				);
-		
-		System.out.println("Worker : " + worker);
-		
-		return worker;
+	public Worker setWorker(Object[] attributes) {
+	    System.out.println("WorkerDAO : setWorker");
+
+	    Site site = null;
+	    
+	    String zoneList = (String) attributes[10]; 
+	    if (zoneList != null && !zoneList.isEmpty()) {
+	        String[] zoneEntries = zoneList.split(",");
+	        for (String entry : zoneEntries) {
+	            String[] parts = entry.split(":");
+	            if (parts.length == 3) {
+
+	                Zone zone = new Zone(
+	                	    Integer.parseInt(parts[0].trim()), // idZone
+	                	    Letter.valueOf(parts[1].trim().toUpperCase()), // letter
+	                	    Color.valueOf(parts[2].trim().toUpperCase()), // color
+	                	    ((BigDecimal) attributes[7]).intValue(), // site_id 
+	                	    (String) attributes[8], // site_name
+	                	    (String) attributes[9]  // site_city
+	                	);
+	                site = zone.getSite();
+	            }
+	        }
+	    }
+
+	    Timestamp timestamp = (Timestamp) attributes[3];
+	    String birthDateStr = timestamp.toLocalDateTime().toLocalDate().toString();
+	    LocalDate birthDate = LocalDate.parse(birthDateStr);
+	    
+	    Worker worker = new Worker(
+	    		((BigDecimal) attributes[0]).intValue(),            // id_person
+	            (String) attributes[1],        // firstName
+	            (String) attributes[2],        // lastName
+	            birthDate,  // birthDate
+	            (String) attributes[4],        // phoneNumber
+	            (String) attributes[5],        // registrationCode
+	            (String) attributes[6],        // password
+	            site                           // site, à adapter selon la structure de ton objet
+	    );
+
+	    return worker;
 	}
+
+
 }

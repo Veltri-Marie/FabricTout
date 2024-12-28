@@ -1,5 +1,6 @@
 package be.fabrictout.dao;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import be.fabrictout.javabeans.Site;
 import be.fabrictout.javabeans.Worker;
 import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.STRUCT;
 
 public class SiteDAO extends DAO<Site> {
 
@@ -19,32 +21,26 @@ public class SiteDAO extends DAO<Site> {
         super(conn);
     }
 
-    public int getNextIdDAO() {
-        String procedureCall = "{call get_next_site_id(?)}";
-        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.registerOutParameter(1, Types.VARCHAR); 
-            stmt.execute();
-            return stmt.getInt(1); 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return -1; 
-        }
-    }
-
     @Override
     public boolean createDAO(Site site) {
-    	System.out.println("SiteDAO : CreateDAO");
-    	String procedureCall = "{call add_site(?, ?, ?)}";
+        System.out.println("SiteDAO : createDAO");
+        String procedureCall = "{call add_site(?, ?, ?)}"; 
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.setInt(1, site.getIdSite());
+
+            stmt.registerOutParameter(1, Types.INTEGER);
+
             stmt.setString(2, site.getName());
             stmt.setString(3, site.getCity());
 
             stmt.execute();
-            return true; 
+
+            int generatedId = stmt.getInt(1);
+            site.setIdSite(generatedId);
+
+            return true;
         } catch (SQLException e) {
             e.printStackTrace();
-            return false; 
+            return false;
         }
     }
 
@@ -84,52 +80,79 @@ public class SiteDAO extends DAO<Site> {
 
     @Override
     public Site findDAO(int id) {
-    	System.out.println("SiteDAO : findDAO");
-    	String procedureCall = "{call find_site(?, ?)}";
-        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.setInt(1, id);
-            stmt.registerOutParameter(2, OracleTypes.CURSOR);
+        System.out.println("SiteDAO : findDAO");
+        String procedureCall = "{call find_site(?, ?)}";  
+        Site site = null;
 
+        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
+            stmt.setInt(1, id);  // Passage de l'ID du site
+            stmt.registerOutParameter(2, OracleTypes.ARRAY, "SITE_TABLE_TYPE"); 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(2)) {
-                if (rs.next()) {  
-                    return setSiteDAO(rs);
+
+            Array array = stmt.getArray(2);  
+            if (array != null) {
+                Object[] siteObjects = (Object[]) array.getArray();  
+                if (siteObjects.length > 0) {
+                    Object obj = siteObjects[0];  
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();  
+                        if (attributes != null && attributes.length == 6) {
+                            site = setSiteDAO(attributes);  
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null; 
+
+        return site;
     }
+
 
     @Override
     public List<Site> findAllDAO() {
-    	System.out.println("SiteDAO : findAllDAO");
-    	String procedureCall = "{call find_all_sites(?)}";
+        System.out.println("SiteDAO : findAllDAO");
+        String procedureCall = "{call find_all_sites(?)}"; 
         List<Site> sites = new ArrayList<>();
+
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.registerOutParameter(1, OracleTypes.CURSOR);
+            stmt.registerOutParameter(1, OracleTypes.ARRAY, "SITE_TABLE_TYPE");
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(1)) {
-                while (rs.next()) {
-                    sites.add(setSiteDAO(rs));
+
+            Array array = stmt.getArray(1);  
+            if (array != null) {
+                Object[] siteObjects = (Object[]) array.getArray();  
+                for (Object obj : siteObjects) {
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 6) { 
+                            sites.add(setSiteDAO(attributes));  
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return sites; 
+        return sites;
     }
 
-
-    private Site setSiteDAO(ResultSet rs) throws SQLException {
-    	System.out.println("SiteDAO : setSiteDAO");
-    	Site site = null; 
+    private Site setSiteDAO(Object[] attributes) throws SQLException {
+        System.out.println("SiteDAO : setSiteDAO");
+        Site site = null; 
         Zone zone = null;
         List<Zone> zones = new ArrayList<>();
-                    
-        String zoneList = rs.getString("zone_list");
+        
+        System.out.println("Nombre d'attributs : " + attributes.length);
+        for (int i = 0; i < attributes.length; i++) {
+            System.out.println("Attribut " + i + ": " + attributes[i] + " (Type: " + attributes[i].getClass().getName() + ")");
+        }
+        
+        String zoneList = (String) attributes[10];
         if (zoneList != null && !zoneList.isEmpty()) {
             int counter = 0;
             String[] zoneEntries = zoneList.split(",");
@@ -145,45 +168,43 @@ public class SiteDAO extends DAO<Site> {
                             zoneId,
                             letter,
                             color,
-                            rs.getInt("id_site"),
-                            rs.getString("site_name"),
-                            rs.getString("site_city")
+                            ((BigDecimal) attributes[7]).intValue(),  // site_id
+                            (String) attributes[8],  // site_name
+                            (String) attributes[9]   // site_city 
                         );
-                        site = firstZone.getSite();
+                        site = firstZone.getSite();  
                         zones.add(firstZone);
                         counter++;
-                        
                     } else {
                         zone = new Zone(
                             zoneId,
                             letter,
                             color, 
-                            site);
+                            site
+                        );
                         zones.add(zone);
 
                         if (site != null) {
-                            site.addZone(zone); 
+                            site.addZone(zone);  
                         }
                     }
                 }
             }
         }
-        
-            
-	    Manager manager = new Manager(
-	    		rs.getInt("id_person"), 
-	    		rs.getString("firstName"),
-	    		rs.getString("lastName"),
-	    		rs.getDate("birthDate").toLocalDate(),
-	    		rs.getString("phoneNumber"),
-	    		rs.getString("registrationCode"),
-	    		rs.getString("password"),
-	    		site
-	    		);
-	    site.setManager(manager);
-        
-	    List<Worker> workers = new ArrayList<>();
-	    String workerList = rs.getString("worker_list");
+
+        Manager manager = new Manager(
+            ((BigDecimal) attributes[0]).intValue(), // id_person 
+            (String) attributes[1],  // firstName 
+            (String) attributes[2],  // lastName 
+            LocalDate.parse((String) attributes[3]),  // birthDate 
+            (String) attributes[4],  // phoneNumber 
+            (String) attributes[5],  // registrationCode 
+            (String) attributes[6],  // password
+            site  
+        );
+        site.setManager(manager);  
+
+        String workerList = (String) attributes[11];
         if (workerList != null && !workerList.isEmpty()) {
             String[] workereEntries = workerList.split(",");
             for (String entry : workereEntries) {
@@ -191,16 +212,16 @@ public class SiteDAO extends DAO<Site> {
                 if (parts.length == 5) {
                     try {
                         Worker worker = new Worker(
-                            Integer.parseInt(parts[0].trim()), // idPerson
-                            parts[1].trim(), // firstName
-                            parts[2].trim(),	// lastName
-                            LocalDate.parse(parts[3].trim()), // birthDate
-                            parts[4].trim(), // phoneNumber, 
-                            parts[5].trim(), // registrationCode
-                            parts[6].trim(), // password
-                            site
+                            Integer.parseInt(parts[0].trim()),  // idPerson
+                            parts[1].trim(),  // firstName
+                            parts[2].trim(),  // lastName
+                            LocalDate.parse(parts[3].trim()),  // birthDate
+                            parts[4].trim(),  // phoneNumber
+                            parts[5].trim(),  // registrationCode
+                            parts[6].trim(),  // password
+                            site  
                         );
-                        site.addWorker(worker);
+                        site.addWorker(worker); 
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -208,8 +229,9 @@ public class SiteDAO extends DAO<Site> {
             }
         }
 
-        return site;
+        return site;  
     }
+
     
 
 }

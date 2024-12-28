@@ -1,5 +1,6 @@
 package be.fabrictout.dao;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import be.fabrictout.javabeans.State;
 import be.fabrictout.javabeans.Type;
 import be.fabrictout.javabeans.Zone;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.STRUCT;
 
 public class ZoneDAO extends DAO<Zone> {
 
@@ -18,29 +20,23 @@ public class ZoneDAO extends DAO<Zone> {
         super(conn);
     }
 
-    public int getNextIdDAO() {
-    	System.out.println("ZoneDAO : getNextIdDAO");
-        String procedureCall = "{call get_next_zone_id(?)}";
-        try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.registerOutParameter(1, Types.INTEGER);
-            stmt.execute();
-            return stmt.getInt(1);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
     @Override
     public boolean createDAO(Zone zone) {
-    	System.out.println("ZoneDAO : createDAO");
-        String procedureCall = "{call add_zone(?, ?, ?, ?)}";
+        System.out.println("ZoneDAO : createDAO");
+        String procedureCall = "{call add_zone(?, ?, ?, ?)}"; 
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.setInt(1, zone.getZoneId());
+
+            stmt.registerOutParameter(1, Types.INTEGER);
+
             stmt.setString(2, zone.getLetter().name());
             stmt.setString(3, zone.getColor().name());
             stmt.setInt(4, zone.getSite().getIdSite());
+
             stmt.execute();
+
+            int generatedId = stmt.getInt(1);
+            zone.setZoneId(generatedId);
+
             return true;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -82,16 +78,26 @@ public class ZoneDAO extends DAO<Zone> {
 
     @Override
     public Zone findDAO(int id) {
-    	System.out.println("ZoneDAO : findDAO");
+        System.out.println("ZoneDAO : findDAO");
         String procedureCall = "{call find_zone(?, ?)}";
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
             stmt.setInt(1, id);
-            stmt.registerOutParameter(2, OracleTypes.CURSOR);
+            stmt.registerOutParameter(2, OracleTypes.ARRAY, "ZONE_TABLE_TYPE"); 
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(2)) {
-                if (rs.next()) {
-                    return setZone(rs);
+
+            Array array = stmt.getArray(2); 
+            if (array != null) {
+                Object[] zoneObjects = (Object[]) array.getArray(); 
+                if (zoneObjects.length > 0) {
+                    Object obj = zoneObjects[0];
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 7) { 
+                            return setZone(attributes); 
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -100,18 +106,29 @@ public class ZoneDAO extends DAO<Zone> {
         return null;
     }
 
+
     @Override
     public List<Zone> findAllDAO() {
-    	System.out.println("ZoneDAO : findAllDAO");
+        System.out.println("ZoneDAO : findAllDAO");
         String procedureCall = "{call find_all_zones(?)}";
         List<Zone> zones = new ArrayList<>();
+        
         try (CallableStatement stmt = this.connect.prepareCall(procedureCall)) {
-            stmt.registerOutParameter(1, OracleTypes.CURSOR);
+            stmt.registerOutParameter(1, OracleTypes.ARRAY, "ZONE_TABLE_TYPE");
 
             stmt.execute();
-            try (ResultSet rs = (ResultSet) stmt.getObject(1)) {
-                while (rs.next()) {
-                    zones.add(setZone(rs));
+
+            Array array = stmt.getArray(1);  
+            if (array != null) {
+                Object[] zoneObjects = (Object[]) array.getArray();
+                for (Object obj : zoneObjects) {
+                    if (obj instanceof STRUCT) {
+                        STRUCT struct = (STRUCT) obj;
+                        Object[] attributes = struct.getAttributes();
+                        if (attributes != null && attributes.length == 7) {
+                            zones.add(setZone(attributes)); 
+                        }
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -119,33 +136,32 @@ public class ZoneDAO extends DAO<Zone> {
         }
         return zones;
     }
-    
-    public Zone setZone(ResultSet rs) throws SQLException {
-    	System.out.println("ZoneDAO : setZone : ");
-    	List<Zone> zones = new ArrayList<>();
-    	
-        Zone zone = new Zone(
-            rs.getInt("zone_id"),
-            Letter.valueOf(rs.getString("letter").toUpperCase()),
-            Color.valueOf(rs.getString("color").toUpperCase()),
-            rs.getInt("id_site"),
-            rs.getString("site_name"),
-            rs.getString("site_city")
-        );
-        zones.add(zone);
 
-        String machineList = rs.getString("machine_list");
+    
+    public Zone setZone(Object[] attributes) throws SQLException {
+        System.out.println("ZoneDAO : setZone");
+
+        Zone zone = new Zone(
+            ((BigDecimal) attributes[0]).intValue(),  // zone_id
+            Letter.valueOf(((String) attributes[1]).toUpperCase()),  // letter
+            Color.valueOf(((String) attributes[2]).toUpperCase()),  // color
+            ((BigDecimal) attributes[3]).intValue(),  // site_id
+            (String) attributes[4],  // site_name
+            (String) attributes[5]  // site_city
+        );
+
+        String machineList = (String) attributes[6];
         if (machineList != null && !machineList.isEmpty()) {
             String[] machineEntries = machineList.split(",");
             for (String entry : machineEntries) {
                 String[] parts = entry.split(":");
                 if (parts.length == 4) {
                     Machine machine = new Machine(
-                        Integer.parseInt(parts[0].trim()),
-                        Type.valueOf(parts[1].trim().toUpperCase()),
-                        Double.parseDouble(parts[2].trim()),
-                        State.valueOf(parts[3].trim().toUpperCase()),
-                        zones
+                        Integer.parseInt(parts[0].trim()),  // id_machine
+                        Type.valueOf(parts[1].trim().toUpperCase()),  // machine_type
+                        Double.parseDouble(parts[2].trim()),  // machine_size
+                        State.valueOf(parts[3].trim().toUpperCase()),  // machine_state
+                        new ArrayList<>()
                     );
                     zone.addMachine(machine);
                 }
@@ -154,5 +170,6 @@ public class ZoneDAO extends DAO<Zone> {
 
         return zone;
     }
+
 
 }
